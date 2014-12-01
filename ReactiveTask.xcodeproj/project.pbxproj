@@ -360,11 +360,6 @@
 			buildSettings = {
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/Carthage.checkout/LlamaKit/build/Debug",
-					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
-				);
 				FRAMEWORK_VERSION = A;
 				INFOPLIST_FILE = ReactiveTask/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -377,11 +372,6 @@
 			buildSettings = {
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/Carthage.checkout/LlamaKit/build/Debug",
-					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
-				);
 				FRAMEWORK_VERSION = A;
 				INFOPLIST_FILE = ReactiveTask/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -395,7 +385,6 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(inherited)",
-					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
 				);
 				INFOPLIST_FILE = ReactiveTaskTests/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -409,7 +398,6 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(inherited)",
-					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
 				);
 				INFOPLIST_FILE = ReactiveTaskTests/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -433,11 +421,6 @@
 			buildSettings = {
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/Carthage.checkout/LlamaKit/build/Debug",
-					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
-				);
 				FRAMEWORK_VERSION = A;
 				INFOPLIST_FILE = ReactiveTask/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -451,7 +434,6 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(inherited)",
-					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
 				);
 				INFOPLIST_FILE = ReactiveTaskTests/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -475,11 +457,6 @@
 			buildSettings = {
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/Carthage.checkout/LlamaKit/build/Debug",
-					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
-				);
 				FRAMEWORK_VERSION = A;
 				INFOPLIST_FILE = ReactiveTask/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -493,7 +470,6 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(inherited)",
-					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
 				);
 				INFOPLIST_FILE = ReactiveTaskTests/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
