@@ -416,6 +416,90 @@
 			};
 			name = Release;
 		};
+		D0BFEA991A2D1F8B00E23194 /* Test */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D0BFEA7B1A2D1E7C00E23194 /* Test.xcconfig */;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Test;
+		};
+		D0BFEA9A1A2D1F8B00E23194 /* Test */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D0BFEA891A2D1E7C00E23194 /* Mac-Framework.xcconfig */;
+			buildSettings = {
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage.checkout/LlamaKit/build/Debug",
+					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
+				);
+				FRAMEWORK_VERSION = A;
+				INFOPLIST_FILE = ReactiveTask/Info.plist;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Test;
+		};
+		D0BFEA9B1A2D1F8B00E23194 /* Test */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D0BFEA861A2D1E7C00E23194 /* Mac-Application.xcconfig */;
+			buildSettings = {
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
+				);
+				INFOPLIST_FILE = ReactiveTaskTests/Info.plist;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Test;
+		};
+		D0BFEA9C1A2D1F8E00E23194 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D0BFEA791A2D1E7C00E23194 /* Profile.xcconfig */;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Profile;
+		};
+		D0BFEA9D1A2D1F8E00E23194 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D0BFEA891A2D1E7C00E23194 /* Mac-Framework.xcconfig */;
+			buildSettings = {
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage.checkout/LlamaKit/build/Debug",
+					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
+				);
+				FRAMEWORK_VERSION = A;
+				INFOPLIST_FILE = ReactiveTask/Info.plist;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Profile;
+		};
+		D0BFEA9E1A2D1F8E00E23194 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D0BFEA861A2D1E7C00E23194 /* Mac-Application.xcconfig */;
+			buildSettings = {
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
+				);
+				INFOPLIST_FILE = ReactiveTaskTests/Info.plist;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -423,7 +507,9 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D0BFEA6C1A2D1E5E00E23194 /* Debug */,
+				D0BFEA991A2D1F8B00E23194 /* Test */,
 				D0BFEA6D1A2D1E5E00E23194 /* Release */,
+				D0BFEA9C1A2D1F8E00E23194 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -432,7 +518,9 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D0BFEA6F1A2D1E5E00E23194 /* Debug */,
+				D0BFEA9A1A2D1F8B00E23194 /* Test */,
 				D0BFEA701A2D1E5E00E23194 /* Release */,
+				D0BFEA9D1A2D1F8E00E23194 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -441,7 +529,9 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D0BFEA721A2D1E5E00E23194 /* Debug */,
+				D0BFEA9B1A2D1F8B00E23194 /* Test */,
 				D0BFEA731A2D1E5E00E23194 /* Release */,
+				D0BFEA9E1A2D1F8E00E23194 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
