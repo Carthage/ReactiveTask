@@ -4,4 +4,16 @@
    <FileRef
       location = "group:ReactiveTask.xcodeproj">
    </FileRef>
+   <FileRef
+      location = "group:Carthage.checkout/LlamaKit/LlamaKit.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Carthage.checkout/Nimble/Nimble.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Carthage.checkout/Quick/Quick.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Carthage.checkout/ReactiveCocoa/ReactiveCocoa.xcodeproj">
+   </FileRef>
 </Workspace>

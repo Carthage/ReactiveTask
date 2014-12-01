@@ -10,6 +10,10 @@
 		D0BFEA5E1A2D1E5E00E23194 /* ReactiveTask.h in Headers */ = {isa = PBXBuildFile; fileRef = D0BFEA5D1A2D1E5E00E23194 /* ReactiveTask.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D0BFEA641A2D1E5E00E23194 /* ReactiveTask.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA581A2D1E5E00E23194 /* ReactiveTask.framework */; };
 		D0BFEA6B1A2D1E5E00E23194 /* ReactiveTaskTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BFEA6A1A2D1E5E00E23194 /* ReactiveTaskTests.swift */; };
+		D0BFEA921A2D1F1A00E23194 /* ReactiveCocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA901A2D1F1A00E23194 /* ReactiveCocoa.framework */; };
+		D0BFEA941A2D1F3900E23194 /* Quick.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA931A2D1F3900E23194 /* Quick.framework */; };
+		D0BFEA961A2D1F4F00E23194 /* Nimble.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA951A2D1F4F00E23194 /* Nimble.framework */; };
+		D0BFEA981A2D1F5500E23194 /* LlamaKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA971A2D1F5500E23194 /* LlamaKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +51,10 @@
 		D0BFEA891A2D1E7C00E23194 /* Mac-Framework.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Mac-Framework.xcconfig"; sourceTree = "<group>"; };
 		D0BFEA8A1A2D1E7C00E23194 /* Mac-StaticLibrary.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Mac-StaticLibrary.xcconfig"; sourceTree = "<group>"; };
 		D0BFEA8B1A2D1E7C00E23194 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		D0BFEA901A2D1F1A00E23194 /* ReactiveCocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = ReactiveCocoa.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0BFEA931A2D1F3900E23194 /* Quick.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Quick.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0BFEA951A2D1F4F00E23194 /* Nimble.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Nimble.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0BFEA971A2D1F5500E23194 /* LlamaKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = LlamaKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +62,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D0BFEA921A2D1F1A00E23194 /* ReactiveCocoa.framework in Frameworks */,
+				D0BFEA981A2D1F5500E23194 /* LlamaKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -61,7 +71,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D0BFEA941A2D1F3900E23194 /* Quick.framework in Frameworks */,
 				D0BFEA641A2D1E5E00E23194 /* ReactiveTask.framework in Frameworks */,
+				D0BFEA961A2D1F4F00E23194 /* Nimble.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -99,6 +111,8 @@
 		D0BFEA5B1A2D1E5E00E23194 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				D0BFEA971A2D1F5500E23194 /* LlamaKit.framework */,
+				D0BFEA901A2D1F1A00E23194 /* ReactiveCocoa.framework */,
 				D0BFEA5C1A2D1E5E00E23194 /* Info.plist */,
 			);
 			name = "Supporting Files";
@@ -116,6 +130,8 @@
 		D0BFEA681A2D1E5E00E23194 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				D0BFEA951A2D1F4F00E23194 /* Nimble.framework */,
+				D0BFEA931A2D1F3900E23194 /* Quick.framework */,
 				D0BFEA691A2D1E5E00E23194 /* Info.plist */,
 			);
 			name = "Supporting Files";
@@ -344,6 +360,11 @@
 			buildSettings = {
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage.checkout/LlamaKit/build/Debug",
+					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
+				);
 				FRAMEWORK_VERSION = A;
 				INFOPLIST_FILE = ReactiveTask/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -356,6 +377,11 @@
 			buildSettings = {
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage.checkout/LlamaKit/build/Debug",
+					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
+				);
 				FRAMEWORK_VERSION = A;
 				INFOPLIST_FILE = ReactiveTask/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -369,6 +395,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(inherited)",
+					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
 				);
 				INFOPLIST_FILE = ReactiveTaskTests/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -382,6 +409,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(inherited)",
+					"$(USER_LIBRARY_DIR)/Developer/Xcode/DerivedData/ReactiveTask-gyhssotnclyvmgeqzccqpsqilwvm/Build/Products/Debug",
 				);
 				INFOPLIST_FILE = ReactiveTaskTests/Info.plist;
 				PRODUCT_NAME = "$(TARGET_NAME)";
