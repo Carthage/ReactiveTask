@@ -172,7 +172,7 @@ private final class Pipe {
 			signal.startWithSink { inputDisposable in
 				disposable.addDisposable(inputDisposable)
 
-				return eventSink(next: { data in
+				return Event.sink(next: { data in
 					let dispatchData = dispatch_data_create(data.bytes, UInt(data.length), queue, nil)
 
 					dispatch_io_write(channel, 0, dispatchData, queue) { (done, data, error) in
@@ -289,7 +289,7 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 					stdinSignal.startWithSink { stdinDisposable in
 						disposable.addDisposable(stdinDisposable)
 
-						return eventSink(error: { error in
+						return Event.sink(error: { error in
 							sink.put(.Error(error))
 						})
 					}
