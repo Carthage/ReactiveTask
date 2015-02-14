@@ -305,24 +305,12 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 					.map { (datas, terminationStatus) -> (NSData, NSData, Int32) in
 						return (datas.0, datas.1, terminationStatus)
 					}
-					.tryMap { (stdoutData, stderrData, terminationStatus) -> Result<NSData> in
+					.tryMap { (stdoutData, stderrData, terminationStatus) -> Result<NSData, ReactiveTaskError> in
 						if terminationStatus == EXIT_SUCCESS {
 							return success(stdoutData)
 						} else {
-							let errorString = (stderrData.length > 0 ? NSString(data: stderrData, encoding: NSUTF8StringEncoding) as String? : nil) ?? ""
-
-							var description = "A shell task failed with exit code \(terminationStatus)"
-							if !errorString.isEmpty {
-								description += ":\n\(errorString)"
-							}
-
-							let error = NSError(domain: ReactiveTaskError.domain, code: ReactiveTaskError.ShellTaskFailed.rawValue, userInfo: [
-								ReactiveTaskError.exitCodeKey: Int(terminationStatus),
-								ReactiveTaskError.standardErrorKey: errorString,
-								NSLocalizedDescriptionKey: errorString
-							])
-							
-							return failure(error)
+							let errorString = (stderrData.length > 0 ? String(data: stderrData, encoding: NSUTF8StringEncoding) : nil)
+							return failure(ReactiveTaskError(exitCode: terminationStatus, standardError: errorString))
 						}
 					}
 			}

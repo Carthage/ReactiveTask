@@ -8,19 +8,22 @@
 
 import Foundation
 
-/// Possible error codes within `ReactiveTaskErrorDomain`.
-public enum ReactiveTaskError: Int {
-	/// The domain for all errors originating within ReactiveTask.
-	public static let domain: NSString = "org.carthage.ReactiveTask"
-
-	/// In a user info dictionary, associated with the exit code from a child
-	/// process.
-	public static let exitCodeKey: NSString = "ReactiveTaskErrorExitCode"
-
-	/// In a user info dictionary, associated with any accumulated stderr
-	/// string.
-	public static let standardErrorKey: NSString = "ReactiveTaskErrorStandardError"
-
+/// An error originating from ReactiveTask.
+public enum ReactiveTaskError {
 	/// A shell task exited unsuccessfully.
-	case ShellTaskFailed
+	case ShellTaskFailed(exitCode: Int, standardError: String?)
+}
+
+extension ReactiveTaskError: Printable {
+	public var description: String {
+		switch self {
+		case let .ShellTaskFailed(exitCode, standardError):
+			var description = "A shell task failed with exit code \(exitCode)"
+			if let standardError = standardError {
+				description += ":\n\(standardError)"
+			}
+			
+			return description
+		}
+	}
 }
