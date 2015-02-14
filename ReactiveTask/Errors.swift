@@ -7,11 +7,29 @@
 //
 
 import Foundation
+import ReactiveCocoa
 
 /// An error originating from ReactiveTask.
 public enum ReactiveTaskError {
 	/// A shell task exited unsuccessfully.
-	case ShellTaskFailed(exitCode: Int, standardError: String?)
+	case ShellTaskFailed(exitCode: Int32, standardError: String?)
+
+	/// An error was returned from a POSIX API.
+	case POSIXError(Int32)
+}
+
+extension ReactiveTaskError: ErrorType {
+	public var nsError: NSError {
+		switch self {
+		case let .POSIXError(code):
+			return NSError(domain: NSPOSIXErrorDomain, code: Int(code), userInfo: nil)
+
+		default:
+			return NSError(domain: "org.carthage.ReactiveTask", code: 0, userInfo: [
+				NSLocalizedDescriptionKey: self.description
+			])
+		}
+	}
 }
 
 extension ReactiveTaskError: Printable {
@@ -22,8 +40,11 @@ extension ReactiveTaskError: Printable {
 			if let standardError = standardError {
 				description += ":\n\(standardError)"
 			}
-			
+
 			return description
+
+		case let .POSIXError:
+			return nsError.description
 		}
 	}
 }

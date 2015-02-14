@@ -32,12 +32,10 @@ public struct TaskDescription {
 
 	/// Data to stream to standard input of the launched process.
 	///
-	/// An error sent along this signal will interrupt the task.
-	///
 	/// If nil, stdin will be inherited from the parent process.
-	public var standardInput: ColdSignal<NSData>?
+	public var standardInput: SignalProducer<NSData, NoError>?
 
-	public init(launchPath: String, arguments: [String] = [], workingDirectoryPath: String? = nil, environment: [String: String]? = nil, standardInput: ColdSignal<NSData>? = nil) {
+	public init(launchPath: String, arguments: [String] = [], workingDirectoryPath: String? = nil, environment: [String: String]? = nil, standardInput: SignalProducer<NSData, NoError>? = nil) {
 		self.launchPath = launchPath
 		self.arguments = arguments
 		self.workingDirectoryPath = workingDirectoryPath
@@ -88,13 +86,12 @@ private final class Pipe {
 	}
 
 	/// Instantiates a new descriptor pair.
-	class func create() -> Result<Pipe> {
+	class func create() -> Result<Pipe, ReactiveTaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
 			return success(self(readFD: fildes[0], writeFD: fildes[1]))
 		} else {
-			let nsError = NSError(domain: NSPOSIXErrorDomain, code: Int(errno), userInfo: nil)
-			return failure(nsError)
+			return failure(.POSIXError(errno))
 		}
 	}
 
@@ -107,18 +104,17 @@ private final class Pipe {
 	/// Creates a signal that will take ownership of the `readFD` using
 	/// dispatch_io, then read it to completion.
 	///
-	/// After subscribing to the returned signal, `readFD` should not be used
+	/// After starting the returned producer, `readFD` should not be used
 	/// anywhere else, as it may close unexpectedly.
-	func transferReadsToSignal() -> ColdSignal<dispatch_data_t> {
+	func transferReadsToProducer() -> SignalProducer<dispatch_data_t, ReactiveTaskError> {
 		let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
 
-		return ColdSignal { sink, disposable in
+		return SignalProducer { observer, disposable in
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, queue) { error in
 				if error == 0 {
-					sink.put(.Completed)
+					sendCompleted(observer)
 				} else {
-					let nsError = NSError(domain: NSPOSIXErrorDomain, code: Int(error), userInfo: nil)
-					sink.put(.Error(nsError))
+					sendError(observer, .POSIXError(error))
 				}
 
 				close(self.readFD)
@@ -127,12 +123,11 @@ private final class Pipe {
 			dispatch_io_set_low_water(channel, 1)
 			dispatch_io_read(channel, 0, UInt.max, queue) { (done, data, error) in
 				if let data = data {
-					sink.put(.Next(Box(data)))
+					sendNext(observer, data)
 				}
 
 				if error != 0 {
-					let nsError = NSError(domain: NSPOSIXErrorDomain, code: Int(error), userInfo: nil)
-					sink.put(.Error(nsError))
+					sendError(observer, .POSIXError(error))
 				}
 
 				if done {
@@ -150,39 +145,35 @@ private final class Pipe {
 	/// `signal` into `writeFD`, then closes `writeFD` when the input signal
 	/// terminates.
 	///
-	/// After subscribing to the returned signal, `writeFD` should not be used
+	/// After starting the returned producer, `writeFD` should not be used
 	/// anywhere else, as it may close unexpectedly.
 	///
-	/// Returns a signal that will complete or error.
-	func writeDataFromSignal(signal: ColdSignal<NSData>) -> ColdSignal<()> {
+	/// Returns a producer that will complete or error.
+	func writeDataFromProducer(producer: SignalProducer<NSData, NoError>) -> SignalProducer<(), ReactiveTaskError> {
 		let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
 
-		return ColdSignal { sink, disposable in
+		return SignalProducer { observer, disposable in
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, queue) { error in
 				if error == 0 {
-					sink.put(.Completed)
+					sendCompleted(observer)
 				} else {
-					let nsError = NSError(domain: NSPOSIXErrorDomain, code: Int(error), userInfo: nil)
-					sink.put(.Error(nsError))
+					sendError(observer, .POSIXError(error))
 				}
 
 				close(self.writeFD)
 			}
 
-			signal.startWithSink { inputDisposable in
-				disposable.addDisposable(inputDisposable)
+			producer.startWithSignal { signal, producerDisposable in
+				disposable.addDisposable(producerDisposable)
 
-				return Event.sink(next: { data in
+				signal.observe(next: { data in
 					let dispatchData = dispatch_data_create(data.bytes, UInt(data.length), queue, nil)
 
 					dispatch_io_write(channel, 0, dispatchData, queue) { (done, data, error) in
 						if error != 0 {
-							let nsError = NSError(domain: NSPOSIXErrorDomain, code: Int(error), userInfo: nil)
-							sink.put(.Error(nsError))
+							sendError(observer, .POSIXError(error))
 						}
 					}
-				}, error: { error in
-					sink.put(.Error(error))
 				}, completed: {
 					dispatch_io_close(channel, 0)
 				})
@@ -200,20 +191,20 @@ private final class Pipe {
 ///
 /// If `forwardingSink` is non-nil, each incremental piece of data will be sent
 /// to it as data is received.
-private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData>?) -> ColdSignal<NSData> {
-	return pipe.transferReadsToSignal()
-		.on(next: { (data: dispatch_data_t) in
+private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData>?) -> SignalProducer<NSData, ReactiveTaskError> {
+	return pipe.transferReadsToProducer()
+		|> on(next: { (data: dispatch_data_t) in
 			forwardingSink?.put(data as NSData)
 			return ()
 		})
-		.reduce(initial: nil) { (buffer: dispatch_data_t?, data: dispatch_data_t) in
+		|> reduce(nil) { (buffer: dispatch_data_t?, data: dispatch_data_t) in
 			if let buffer = buffer {
 				return dispatch_data_create_concat(buffer, data)
 			} else {
 				return data
 			}
 		}
-		.map { (data: dispatch_data_t?) -> NSData in
+		|> map { (data: dispatch_data_t?) -> NSData in
 			if let data = data {
 				return data as NSData
 			} else {
@@ -224,11 +215,11 @@ private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData
 
 /// Launches a new shell task, using the parameters from `taskDescription`.
 ///
-/// Returns a cold signal that will launch the task when started, then send one
+/// Returns a producer that will launch the task when started, then send one
 /// `NSData` value (representing aggregated data from `stdout`) and complete
 /// upon success.
-public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<NSData>? = nil, standardError: SinkOf<NSData>? = nil) -> ColdSignal<NSData> {
-	return ColdSignal { sink, disposable in
+public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<NSData>? = nil, standardError: SinkOf<NSData>? = nil) -> SignalProducer<NSData, ReactiveTaskError> {
+	return SignalProducer { observer, disposable in
 		let task = NSTask()
 		task.launchPath = taskDescription.launchPath
 		task.arguments = taskDescription.arguments
@@ -241,35 +232,32 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 			task.environment = env
 		}
 
-		var stdinSignal: ColdSignal<()> = .empty()
+		var stdinSignal: SignalProducer<(), ReactiveTaskError> = .empty
 
 		if let input = taskDescription.standardInput {
 			switch Pipe.create() {
 			case let .Success(pipe):
 				task.standardInput = pipe.unbox.readHandle
 
-				stdinSignal = ColdSignal.lazy {
+				stdinSignal = pipe.unbox.writeDataFromProducer(input) |> on(started: {
 					close(pipe.unbox.readFD)
-					return pipe.unbox.writeDataFromSignal(input)
-				}
+				})
 
 			case let .Failure(error):
-				sink.put(.Error(error))
-				return
+				sendError(observer, error.unbox)
 			}
 		}
 
-		ColdSignal.fromResult(Pipe.create())
-			// TODO: This should be a zip.
-			.combineLatestWith(ColdSignal.fromResult(Pipe.create()))
-			.map { (stdoutPipe, stderrPipe) -> ColdSignal<NSData> in
-				let stdoutSignal = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
-				let stderrSignal = aggregateDataReadFromPipe(stderrPipe, standardError)
+		SignalProducer(result: Pipe.create())
+			|> zipWith(SignalProducer(result: Pipe.create()))
+			|> mergeMap { stdoutPipe, stderrPipe -> SignalProducer<NSData> in
+				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
+				let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
-				let terminationStatusSignal = ColdSignal<Int32> { sink, disposable in
+				let terminationStatusProducer = SignalProducer<Int32, NoError> { observer, disposable in
 					task.terminationHandler = { task in
-						sink.put(.Next(Box(task.terminationStatus)))
-						sink.put(.Completed)
+						sendNext(observer, task.terminationStatus)
+						sendCompleted(observer)
 					}
 
 					task.standardOutput = stdoutPipe.writeHandle
@@ -286,11 +274,11 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 					close(stdoutPipe.writeFD)
 					close(stderrPipe.writeFD)
 
-					stdinSignal.startWithSink { stdinDisposable in
+					stdinSignal.startWithSignal { signal, stdinDisposable in
 						disposable.addDisposable(stdinDisposable)
 
-						return Event.sink(error: { error in
-							sink.put(.Error(error))
+						signal.observe(error: { error in
+							sendError(observer, error)
 						})
 					}
 
@@ -299,25 +287,24 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 					}
 				}
 
-				return stdoutSignal
-					.combineLatestWith(stderrSignal)
-					.combineLatestWith(terminationStatusSignal)
-					.map { (datas, terminationStatus) -> (NSData, NSData, Int32) in
+				return stdoutProducer
+					|> combineLatestWith(stderrSignal)
+					|> combineLatestWith(terminationStatusSignal)
+					|> map { datas, terminationStatus -> (NSData, NSData, Int32) in
 						return (datas.0, datas.1, terminationStatus)
 					}
-					.tryMap { (stdoutData, stderrData, terminationStatus) -> Result<NSData, ReactiveTaskError> in
+					|> tryMap { stdoutData, stderrData, terminationStatus -> Result<NSData, ReactiveTaskError> in
 						if terminationStatus == EXIT_SUCCESS {
 							return success(stdoutData)
 						} else {
 							let errorString = (stderrData.length > 0 ? String(data: stderrData, encoding: NSUTF8StringEncoding) : nil)
-							return failure(ReactiveTaskError(exitCode: terminationStatus, standardError: errorString))
+							return failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 						}
 					}
 			}
-			.merge(identity)
-			.startWithSink { taskDisposable in
+			|> startWithSignal { signal, taskDisposable in
 				disposable.addDisposable(taskDisposable)
-				return sink
+				signal.observe(observer)
 			}
 	}
 }
