@@ -193,11 +193,11 @@ private final class Pipe {
 /// to it as data is received.
 private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData>?) -> SignalProducer<NSData, ReactiveTaskError> {
 	return pipe.transferReadsToProducer()
-		|> on(next: { (data: dispatch_data_t) in
-			forwardingSink?.put(data as NSData)
-			return ()
-		})
 		|> reduce(nil) { (buffer: dispatch_data_t?, data: dispatch_data_t) in
+			// FIXME: This should go into on(next:), but the compiler currently
+			// crashes when that's attempted.
+			forwardingSink?.put(data as NSData)
+
 			if let buffer = buffer {
 				return dispatch_data_create_concat(buffer, data)
 			} else {
@@ -232,16 +232,23 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 			task.environment = env
 		}
 
-		var stdinSignal: SignalProducer<(), ReactiveTaskError> = .empty
+		var stdinProducer: SignalProducer<(), ReactiveTaskError> = .empty
 
 		if let input = taskDescription.standardInput {
 			switch Pipe.create() {
 			case let .Success(pipe):
 				task.standardInput = pipe.unbox.readHandle
 
-				stdinSignal = pipe.unbox.writeDataFromProducer(input) |> on(started: {
+				// FIXME: This is basically a reimplementation of on(started:)
+				// to avoid a compiler crash.
+				stdinProducer = SignalProducer { observer, disposable in
 					close(pipe.unbox.readFD)
-				})
+
+					pipe.unbox.writeDataFromProducer(input).startWithSignal { signal, signalDisposable in
+						disposable.addDisposable(signalDisposable)
+						signal.observe(observer)
+					}
+				}
 
 			case let .Failure(error):
 				sendError(observer, error.unbox)
@@ -250,7 +257,7 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 
 		SignalProducer(result: Pipe.create())
 			|> zipWith(SignalProducer(result: Pipe.create()))
-			|> mergeMap { stdoutPipe, stderrPipe -> SignalProducer<NSData> in
+			|> joinMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
 				let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
@@ -266,7 +273,7 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 					if disposable.disposed {
 						stdoutPipe.closePipe()
 						stderrPipe.closePipe()
-						stdinSignal.start().dispose()
+						stdinProducer.start().dispose()
 						return
 					}
 
@@ -274,30 +281,25 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 					close(stdoutPipe.writeFD)
 					close(stderrPipe.writeFD)
 
-					stdinSignal.startWithSignal { signal, stdinDisposable in
-						disposable.addDisposable(stdinDisposable)
-
-						signal.observe(error: { error in
-							sendError(observer, error)
-						})
-					}
+					let stdinDisposable = stdinProducer.start()
+					disposable.addDisposable(stdinDisposable)
 
 					disposable.addDisposable {
 						task.terminate()
 					}
 				}
 
-				return stdoutProducer
-					|> combineLatestWith(stderrSignal)
-					|> combineLatestWith(terminationStatusSignal)
-					|> map { datas, terminationStatus -> (NSData, NSData, Int32) in
-						return (datas.0, datas.1, terminationStatus)
-					}
+				return
+					combineLatest(
+						stdoutProducer,
+						stderrProducer,
+						terminationStatusProducer |> promoteErrors(ReactiveTaskError.self)
+					)
 					|> tryMap { stdoutData, stderrData, terminationStatus -> Result<NSData, ReactiveTaskError> in
 						if terminationStatus == EXIT_SUCCESS {
 							return success(stdoutData)
 						} else {
-							let errorString = (stderrData.length > 0 ? String(data: stderrData, encoding: NSUTF8StringEncoding) : nil)
+							let errorString = (stderrData.length > 0 ? NSString(data: stderrData, encoding: NSUTF8StringEncoding) : nil)
 							return failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 						}
 					}
