@@ -1,5 +1,2 @@
 github "ReactiveCocoa/ReactiveCocoa" "swift-development"
-github "Quick/Quick" ~> 0.2
-github "Quick/Nimble" ~> 0.3
 github "LlamaKit/LlamaKit" == 0.5
-github "jspahrsummers/xcconfigs" >= 0.6
