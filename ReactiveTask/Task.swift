@@ -192,25 +192,35 @@ private final class Pipe {
 /// If `forwardingSink` is non-nil, each incremental piece of data will be sent
 /// to it as data is received.
 private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData>?) -> SignalProducer<NSData, ReactiveTaskError> {
-	return pipe.transferReadsToProducer()
-		|> reduce(nil) { (buffer: dispatch_data_t?, data: dispatch_data_t) in
-			// FIXME: This should go into on(next:), but the compiler currently
-			// crashes when that's attempted.
-			forwardingSink?.put(data as NSData)
+	let readProducer = pipe.transferReadsToProducer()
 
-			if let buffer = buffer {
-				return dispatch_data_create_concat(buffer, data)
-			} else {
-				return data
-			}
+	return SignalProducer { observer, disposable in
+		var buffer: dispatch_data_t? = nil
+
+		readProducer.startWithSignal { signal, signalDisposable in
+			disposable.addDisposable(signalDisposable)
+
+			signal.observe(next: { data in
+				forwardingSink?.put(data as NSData)
+
+				if let existingBuffer = buffer {
+					buffer = dispatch_data_create_concat(existingBuffer, data)
+				} else {
+					buffer = data
+				}
+			}, error: { error in
+				sendError(observer, error)
+			}, completed: {
+				if let buffer = buffer {
+					sendNext(observer, buffer as NSData)
+				} else {
+					sendNext(observer, NSData())
+				}
+
+				sendCompleted(observer)
+			})
 		}
-		|> map { (data: dispatch_data_t?) -> NSData in
-			if let data = data {
-				return data as NSData
-			} else {
-				return NSData()
-			}
-		}
+	}
 }
 
 /// Launches a new shell task, using the parameters from `taskDescription`.
