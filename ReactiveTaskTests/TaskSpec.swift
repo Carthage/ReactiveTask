@@ -14,29 +14,28 @@ import ReactiveTask
 
 class TaskSpec: QuickSpec {
 	override func spec() {
-		let standardOutput = ObservableProperty(NSData())
-		let standardError = ObservableProperty(NSData())
+		let standardOutput = MutableProperty(NSData())
+		let standardError = MutableProperty(NSData())
 
 		beforeEach {
 			standardOutput.value = NSData()
 			standardError.value = NSData()
 		}
 
-		func accumulatingSinkForProperty(property: ObservableProperty<NSData>) -> SinkOf<NSData> {
-			let (signal, sink) = HotSignal<NSData>.pipe()
+		func accumulatingSinkForProperty(property: MutableProperty<NSData>) -> SinkOf<NSData> {
+			let (signal, sink) = Signal<NSData, NoError>.pipe()
 
-			signal.scan(initial: NSData()) { (accum, data) in
-				let buffer = accum.mutableCopy() as NSMutableData
-				buffer.appendData(data)
+			property <~ signal
+						|> scan(NSData()) { (accum, data) in
+							let buffer = accum.mutableCopy() as NSMutableData
+							buffer.appendData(data)
 
-				return buffer
-			// FIXME: This doesn't actually need to be cold, it just works
-			// around memory management issues.
-			}.replay(0).start(next: { value in
-				property.value = value
-			})
+							return buffer
+						}
 
-			return sink
+			return SinkOf { data in
+				sendNext(sink, data)
+			}
 		}
 
 		it("should launch a task that writes to stdout") {
@@ -44,8 +43,8 @@ class TaskSpec: QuickSpec {
 			let task = launchTask(desc, standardOutput: accumulatingSinkForProperty(standardOutput))
 			expect(standardOutput.value).to(equal(NSData()))
 
-			let result = task.wait()
-			expect(result.isSuccess()).to(beTruthy())
+			let result = task |> wait
+			expect(result.isSuccess).to(beTruthy())
 			expect(NSString(data: standardOutput.value, encoding: NSUTF8StringEncoding)).to(equal("foobar\n"))
 		}
 
@@ -54,8 +53,8 @@ class TaskSpec: QuickSpec {
 			let task = launchTask(desc, standardError: accumulatingSinkForProperty(standardError))
 			expect(standardError.value).to(equal(NSData()))
 
-			let result = task.wait()
-			expect(result.isSuccess()).to(beFalsy())
+			let result = task |> wait
+			expect(result.isSuccess).to(beFalsy())
 			expect(NSString(data: standardError.value, encoding: NSUTF8StringEncoding)).to(equal("stat: not-a-real-file: stat: No such file or directory\n"))
 		}
 
@@ -63,11 +62,11 @@ class TaskSpec: QuickSpec {
 			let strings = [ "foo\n", "bar\n", "buzz\n", "fuzz\n" ]
 			let data = strings.map { $0.dataUsingEncoding(NSUTF8StringEncoding)! }
 
-			let desc = TaskDescription(launchPath: "/usr/bin/sort", standardInput: ColdSignal.fromValues(data))
+			let desc = TaskDescription(launchPath: "/usr/bin/sort", standardInput: SignalProducer(values: data))
 			let task = launchTask(desc, standardOutput: accumulatingSinkForProperty(standardOutput))
 
-			let result = task.wait()
-			expect(result.isSuccess()).to(beTruthy())
+			let result = task |> wait
+			expect(result.isSuccess).to(beTruthy())
 			expect(NSString(data: standardOutput.value, encoding: NSUTF8StringEncoding)).to(equal("bar\nbuzz\nfoo\nfuzz\n"))
 		}
 	}

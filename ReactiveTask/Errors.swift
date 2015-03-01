@@ -7,20 +7,44 @@
 //
 
 import Foundation
+import ReactiveCocoa
 
-/// Possible error codes within `ReactiveTaskErrorDomain`.
-public enum ReactiveTaskError: Int {
-	/// The domain for all errors originating within ReactiveTask.
-	public static let domain: NSString = "org.carthage.ReactiveTask"
-
-	/// In a user info dictionary, associated with the exit code from a child
-	/// process.
-	public static let exitCodeKey: NSString = "ReactiveTaskErrorExitCode"
-
-	/// In a user info dictionary, associated with any accumulated stderr
-	/// string.
-	public static let standardErrorKey: NSString = "ReactiveTaskErrorStandardError"
-
+/// An error originating from ReactiveTask.
+public enum ReactiveTaskError {
 	/// A shell task exited unsuccessfully.
-	case ShellTaskFailed
+	case ShellTaskFailed(exitCode: Int32, standardError: String?)
+
+	/// An error was returned from a POSIX API.
+	case POSIXError(Int32)
+}
+
+extension ReactiveTaskError: ErrorType {
+	public var nsError: NSError {
+		switch self {
+		case let .POSIXError(code):
+			return NSError(domain: NSPOSIXErrorDomain, code: Int(code), userInfo: nil)
+
+		default:
+			return NSError(domain: "org.carthage.ReactiveTask", code: 0, userInfo: [
+				NSLocalizedDescriptionKey: self.description
+			])
+		}
+	}
+}
+
+extension ReactiveTaskError: Printable {
+	public var description: String {
+		switch self {
+		case let .ShellTaskFailed(exitCode, standardError):
+			var description = "A shell task failed with exit code \(exitCode)"
+			if let standardError = standardError {
+				description += ":\n\(standardError)"
+			}
+
+			return description
+
+		case let .POSIXError:
+			return nsError.description
+		}
+	}
 }
