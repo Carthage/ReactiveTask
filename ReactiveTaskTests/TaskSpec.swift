@@ -27,7 +27,7 @@ class TaskSpec: QuickSpec {
 
 			property <~ signal
 						|> scan(NSData()) { (accum, data) in
-							let buffer = accum.mutableCopy() as NSMutableData
+							let buffer = accum.mutableCopy() as! NSMutableData
 							buffer.appendData(data)
 
 							return buffer
