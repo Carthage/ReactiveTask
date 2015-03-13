@@ -1,2 +1,2 @@
-github "ReactiveCocoa/ReactiveCocoa" "swift-development"
-github "LlamaKit/LlamaKit" == 0.5
+github "ReactiveCocoa/ReactiveCocoa" "v3.0-alpha.1"
+github "LlamaKit/LlamaKit" ~> 0.6
