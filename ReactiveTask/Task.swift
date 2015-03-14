@@ -121,7 +121,7 @@ private final class Pipe {
 			}
 
 			dispatch_io_set_low_water(channel, 1)
-			dispatch_io_read(channel, 0, UInt.max, queue) { (done, data, error) in
+			dispatch_io_read(channel, 0, Int.max, queue) { (done, data, error) in
 				if let data = data {
 					sendNext(observer, data)
 				}
@@ -167,7 +167,7 @@ private final class Pipe {
 				disposable.addDisposable(producerDisposable)
 
 				signal.observe(next: { data in
-					let dispatchData = dispatch_data_create(data.bytes, UInt(data.length), queue, nil)
+					let dispatchData = dispatch_data_create(data.bytes, data.length, queue, nil)
 
 					dispatch_io_write(channel, 0, dispatchData, queue) { (done, data, error) in
 						if error != 0 {
@@ -201,7 +201,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData
 			disposable.addDisposable(signalDisposable)
 
 			signal.observe(next: { data in
-				forwardingSink?.put(data as NSData)
+				forwardingSink?.put(data as! NSData)
 
 				if let existingBuffer = buffer {
 					buffer = dispatch_data_create_concat(existingBuffer, data)
@@ -212,7 +212,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData
 				sendError(observer, error)
 			}, completed: {
 				if let buffer = buffer {
-					sendNext(observer, buffer as NSData)
+					sendNext(observer, buffer as! NSData)
 				} else {
 					sendNext(observer, NSData())
 				}
@@ -309,7 +309,7 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 						if terminationStatus == EXIT_SUCCESS {
 							return success(stdoutData)
 						} else {
-							let errorString = (stderrData.length > 0 ? NSString(data: stderrData, encoding: NSUTF8StringEncoding) : nil)
+							let errorString = (stderrData.length > 0 ? String(UTF8String: UnsafePointer<CChar>(stderrData.bytes)) : nil)
 							return failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 						}
 					}
