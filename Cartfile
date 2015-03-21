@@ -1,2 +1,2 @@
-github "ReactiveCocoa/ReactiveCocoa" "v3.0-alpha.2"
+github "ReactiveCocoa/ReactiveCocoa" "v3.0-alpha.3"
 github "LlamaKit/LlamaKit" ~> 0.6
