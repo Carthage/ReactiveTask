@@ -1,5 +1,5 @@
 github "LlamaKit/LlamaKit" "v0.6.0"
-github "Quick/Nimble" "6a679cbf20da3fe570c26296b3029dd168b72c00"
-github "Quick/Quick" "ce625d59aa90be02bfccddfc444ed5dc072a9367"
+github "Quick/Nimble" "v0.4.2"
+github "Quick/Quick" "v0.3.1"
 github "jspahrsummers/xcconfigs" "0.7.2"
-github "ReactiveCocoa/ReactiveCocoa" "ad02d8356b43e2c38f3d4d87ea0127c5f8572668"
+github "ReactiveCocoa/ReactiveCocoa" "f7a7ff3379e0e3d53cdea64b21e6387e3ce51c1d"
