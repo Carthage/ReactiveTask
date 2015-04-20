@@ -267,7 +267,7 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 
 		SignalProducer(result: Pipe.create())
 			|> zipWith(SignalProducer(result: Pipe.create()))
-			|> joinMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
+			|> flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
 				let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
