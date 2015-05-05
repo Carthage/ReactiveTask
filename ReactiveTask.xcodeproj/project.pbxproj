@@ -271,7 +271,7 @@
 		D0BFEA4F1A2D1E5E00E23194 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0610;
+				LastUpgradeCheck = 0630;
 				ORGANIZATIONNAME = Carthage;
 				TargetAttributes = {
 					D0BFEA571A2D1E5E00E23194 = {
@@ -351,7 +351,9 @@
 			baseConfigurationReference = D0BFEA781A2D1E7C00E23194 /* Debug.xcconfig */;
 			buildSettings = {
 				CURRENT_PROJECT_VERSION = 1;
+				GCC_NO_COMMON_BLOCKS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
@@ -363,6 +365,7 @@
 			baseConfigurationReference = D0BFEA7A1A2D1E7C00E23194 /* Release.xcconfig */;
 			buildSettings = {
 				CURRENT_PROJECT_VERSION = 1;
+				GCC_NO_COMMON_BLOCKS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				SDKROOT = macosx;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -425,6 +428,7 @@
 			baseConfigurationReference = D0BFEA7B1A2D1E7C00E23194 /* Test.xcconfig */;
 			buildSettings = {
 				CURRENT_PROJECT_VERSION = 1;
+				GCC_NO_COMMON_BLOCKS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				SDKROOT = macosx;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -462,6 +466,7 @@
 			baseConfigurationReference = D0BFEA791A2D1E7C00E23194 /* Profile.xcconfig */;
 			buildSettings = {
 				CURRENT_PROJECT_VERSION = 1;
+				GCC_NO_COMMON_BLOCKS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				SDKROOT = macosx;
 				VERSIONING_SYSTEM = "apple-generic";
