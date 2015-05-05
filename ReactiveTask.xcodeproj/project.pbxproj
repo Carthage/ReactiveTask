@@ -7,16 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D021308E1AF87B4600B9EC20 /* Box.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D021308D1AF87B4600B9EC20 /* Box.framework */; };
+		D02130921AF87B6500B9EC20 /* Result.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D02130911AF87B6500B9EC20 /* Result.framework */; };
 		D0BFEA5E1A2D1E5E00E23194 /* ReactiveTask.h in Headers */ = {isa = PBXBuildFile; fileRef = D0BFEA5D1A2D1E5E00E23194 /* ReactiveTask.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D0BFEA641A2D1E5E00E23194 /* ReactiveTask.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA581A2D1E5E00E23194 /* ReactiveTask.framework */; };
 		D0BFEA921A2D1F1A00E23194 /* ReactiveCocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA901A2D1F1A00E23194 /* ReactiveCocoa.framework */; };
 		D0BFEA941A2D1F3900E23194 /* Quick.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA931A2D1F3900E23194 /* Quick.framework */; };
 		D0BFEA961A2D1F4F00E23194 /* Nimble.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA951A2D1F4F00E23194 /* Nimble.framework */; };
-		D0BFEA981A2D1F5500E23194 /* LlamaKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA971A2D1F5500E23194 /* LlamaKit.framework */; };
 		D0BFEAA01A2D212000E23194 /* Task.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BFEA9F1A2D212000E23194 /* Task.swift */; };
 		D0BFEAA21A2D212800E23194 /* TaskSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BFEAA11A2D212800E23194 /* TaskSpec.swift */; };
 		D0BFEAA41A2D216600E23194 /* Errors.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BFEAA31A2D216600E23194 /* Errors.swift */; };
-		D0BFEAA51A2D25FA00E23194 /* LlamaKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA971A2D1F5500E23194 /* LlamaKit.framework */; };
 		D0BFEAA61A2D25FA00E23194 /* ReactiveCocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA901A2D1F1A00E23194 /* ReactiveCocoa.framework */; };
 /* End PBXBuildFile section */
 
@@ -31,6 +31,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D021308D1AF87B4600B9EC20 /* Box.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Box.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D02130911AF87B6500B9EC20 /* Result.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Result.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA581A2D1E5E00E23194 /* ReactiveTask.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ReactiveTask.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA5C1A2D1E5E00E23194 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D0BFEA5D1A2D1E5E00E23194 /* ReactiveTask.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ReactiveTask.h; sourceTree = "<group>"; };
@@ -57,7 +59,6 @@
 		D0BFEA901A2D1F1A00E23194 /* ReactiveCocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = ReactiveCocoa.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA931A2D1F3900E23194 /* Quick.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Quick.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA951A2D1F4F00E23194 /* Nimble.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Nimble.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		D0BFEA971A2D1F5500E23194 /* LlamaKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = LlamaKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA9F1A2D212000E23194 /* Task.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Task.swift; sourceTree = "<group>"; };
 		D0BFEAA11A2D212800E23194 /* TaskSpec.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TaskSpec.swift; sourceTree = "<group>"; };
 		D0BFEAA31A2D216600E23194 /* Errors.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Errors.swift; sourceTree = "<group>"; };
@@ -68,8 +69,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D02130921AF87B6500B9EC20 /* Result.framework in Frameworks */,
 				D0BFEA921A2D1F1A00E23194 /* ReactiveCocoa.framework in Frameworks */,
-				D0BFEA981A2D1F5500E23194 /* LlamaKit.framework in Frameworks */,
+				D021308E1AF87B4600B9EC20 /* Box.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -80,7 +82,6 @@
 				D0BFEA941A2D1F3900E23194 /* Quick.framework in Frameworks */,
 				D0BFEA641A2D1E5E00E23194 /* ReactiveTask.framework in Frameworks */,
 				D0BFEA961A2D1F4F00E23194 /* Nimble.framework in Frameworks */,
-				D0BFEAA51A2D25FA00E23194 /* LlamaKit.framework in Frameworks */,
 				D0BFEAA61A2D25FA00E23194 /* ReactiveCocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -121,7 +122,8 @@
 		D0BFEA5B1A2D1E5E00E23194 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
-				D0BFEA971A2D1F5500E23194 /* LlamaKit.framework */,
+				D021308D1AF87B4600B9EC20 /* Box.framework */,
+				D02130911AF87B6500B9EC20 /* Result.framework */,
 				D0BFEA901A2D1F1A00E23194 /* ReactiveCocoa.framework */,
 				D0BFEA5C1A2D1E5E00E23194 /* Info.plist */,
 			);

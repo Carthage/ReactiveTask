@@ -11,6 +11,7 @@ import Nimble
 import Quick
 import ReactiveCocoa
 import ReactiveTask
+import Result
 
 class TaskSpec: QuickSpec {
 	override func spec() {
@@ -44,7 +45,7 @@ class TaskSpec: QuickSpec {
 			expect(standardOutput.value).to(equal(NSData()))
 
 			let result = task |> wait
-			expect(result.isSuccess).to(beTruthy())
+			expect(result.value).notTo(beNil())
 			expect(NSString(data: standardOutput.value, encoding: NSUTF8StringEncoding)).to(equal("foobar\n"))
 		}
 
@@ -54,7 +55,7 @@ class TaskSpec: QuickSpec {
 			expect(standardError.value).to(equal(NSData()))
 
 			let result = task |> wait
-			expect(result.isSuccess).to(beFalsy())
+			expect(result.value).to(beNil())
 			expect(NSString(data: standardError.value, encoding: NSUTF8StringEncoding)).to(equal("stat: not-a-real-file: stat: No such file or directory\n"))
 		}
 
@@ -66,7 +67,7 @@ class TaskSpec: QuickSpec {
 			let task = launchTask(desc, standardOutput: accumulatingSinkForProperty(standardOutput))
 
 			let result = task |> wait
-			expect(result.isSuccess).to(beTruthy())
+			expect(result.value).notTo(beNil())
 			expect(NSString(data: standardOutput.value, encoding: NSUTF8StringEncoding)).to(equal("bar\nbuzz\nfoo\nfuzz\n"))
 		}
 	}
