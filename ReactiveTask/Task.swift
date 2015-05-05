@@ -7,8 +7,8 @@
 //
 
 import Foundation
-import LlamaKit
 import ReactiveCocoa
+import Result
 
 /// Describes how to execute a shell command.
 public struct TaskDescription {
@@ -89,9 +89,9 @@ private final class Pipe {
 	class func create() -> Result<Pipe, ReactiveTaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
-			return success(self(readFD: fildes[0], writeFD: fildes[1]))
+			return .success(self(readFD: fildes[0], writeFD: fildes[1]))
 		} else {
-			return failure(.POSIXError(errno))
+			return .failure(.POSIXError(errno))
 		}
 	}
 
@@ -247,27 +247,27 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 		if let input = taskDescription.standardInput {
 			switch Pipe.create() {
 			case let .Success(pipe):
-				task.standardInput = pipe.unbox.readHandle
+				task.standardInput = pipe.value.readHandle
 
 				// FIXME: This is basically a reimplementation of on(started:)
 				// to avoid a compiler crash.
 				stdinProducer = SignalProducer { observer, disposable in
-					close(pipe.unbox.readFD)
+					close(pipe.value.readFD)
 
-					pipe.unbox.writeDataFromProducer(input).startWithSignal { signal, signalDisposable in
+					pipe.value.writeDataFromProducer(input).startWithSignal { signal, signalDisposable in
 						disposable.addDisposable(signalDisposable)
 						signal.observe(observer)
 					}
 				}
 
 			case let .Failure(error):
-				sendError(observer, error.unbox)
+				sendError(observer, error.value)
 			}
 		}
 
 		SignalProducer(result: Pipe.create())
 			|> zipWith(SignalProducer(result: Pipe.create()))
-			|> joinMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
+			|> flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
 				let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
@@ -307,10 +307,10 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 					)
 					|> tryMap { stdoutData, stderrData, terminationStatus -> Result<NSData, ReactiveTaskError> in
 						if terminationStatus == EXIT_SUCCESS {
-							return success(stdoutData)
+							return .success(stdoutData)
 						} else {
 							let errorString = (stderrData.length > 0 ? String(UTF8String: UnsafePointer<CChar>(stderrData.bytes)) : nil)
-							return failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
+							return .failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 						}
 					}
 			}
