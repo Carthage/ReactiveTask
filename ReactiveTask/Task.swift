@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 Carthage. All rights reserved.
 //
 
+import Box
 import Foundation
 import ReactiveCocoa
 import Result
@@ -195,29 +196,30 @@ private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData
 	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
-		var buffer: dispatch_data_t? = nil
+		let buffer = MutableBox<dispatch_data_t?>(nil)
 
 		readProducer.startWithSignal { signal, signalDisposable in
 			disposable.addDisposable(signalDisposable)
 
 			signal.observe(next: { data in
 				forwardingSink?.put(data as! NSData)
-
-				if let existingBuffer = buffer {
-					buffer = dispatch_data_create_concat(existingBuffer, data)
+				if let existingBuffer = buffer.value {
+					buffer.value = dispatch_data_create_concat(existingBuffer, data)
 				} else {
-					buffer = data
+					buffer.value = data
 				}
 			}, error: { error in
 				sendError(observer, error)
 			}, completed: {
-				if let buffer = buffer {
-					sendNext(observer, buffer as! NSData)
+				if let existingBuffer = buffer.value {
+					sendNext(observer, existingBuffer as! NSData)
 				} else {
 					sendNext(observer, NSData())
 				}
 
 				sendCompleted(observer)
+			}, interrupted: {
+				sendInterrupted(observer)
 			})
 		}
 	}
