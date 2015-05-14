@@ -64,6 +64,8 @@ private final class Pipe {
 
 	/// The file descriptor for writing data.
 	let writeFD: Int32
+    
+    let scheduler: SchedulerType
 
 	/// Creates an NSFileHandle corresponding to the `readFD`. The file handle
 	/// will not automatically close the descriptor.
@@ -78,19 +80,20 @@ private final class Pipe {
 	}
 
 	/// Initializes a pipe object using existing file descriptors.
-	init(readFD: Int32, writeFD: Int32) {
+    init(readFD: Int32, writeFD: Int32, scheduler: SchedulerType) {
 		precondition(readFD >= 0)
 		precondition(writeFD >= 0)
 
 		self.readFD = readFD
 		self.writeFD = writeFD
+        self.scheduler = scheduler
 	}
 
 	/// Instantiates a new descriptor pair.
-	class func create() -> Result<Pipe, ReactiveTaskError> {
+    class func create(scheduler: SchedulerType) -> Result<Pipe, ReactiveTaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
-			return .success(self(readFD: fildes[0], writeFD: fildes[1]))
+            return .success(self(readFD: fildes[0], writeFD: fildes[1], scheduler: scheduler))
 		} else {
 			return .failure(.POSIXError(errno))
 		}
@@ -140,6 +143,7 @@ private final class Pipe {
 				dispatch_io_close(channel, DISPATCH_IO_STOP)
 			}
 		}
+        |> observeOn(scheduler)
 	}
 
 	/// Creates a dispatch_io channel for writing all data that arrives on
@@ -184,6 +188,7 @@ private final class Pipe {
 				dispatch_io_close(channel, DISPATCH_IO_STOP)
 			}
 		}
+        |> observeOn(scheduler)
 	}
 }
 
@@ -223,6 +228,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData
 			})
 		}
 	}
+    |> observeOn(pipe.scheduler)
 }
 
 /// Launches a new shell task, using the parameters from `taskDescription`.
@@ -243,11 +249,13 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 		if let env = taskDescription.environment {
 			task.environment = env
 		}
+        
+        let scheduler = QueueScheduler()
 
 		var stdinProducer: SignalProducer<(), ReactiveTaskError> = .empty
 
 		if let input = taskDescription.standardInput {
-			switch Pipe.create() {
+			switch Pipe.create(scheduler) {
 			case let .Success(pipe):
 				task.standardInput = pipe.value.readHandle
 
@@ -267,7 +275,7 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 			}
 		}
 
-		let pipes = SignalProducer(result: Pipe.create()) |> zipWith(SignalProducer(result: Pipe.create()))
+		let pipes = SignalProducer(result: Pipe.create(scheduler)) |> zipWith(SignalProducer(result: Pipe.create(scheduler)))
 
 		// The Swift compiler can't figure out that we're applying this to
 		// a Producer when using |> :(
@@ -303,6 +311,8 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 						task.terminate()
 					}
 				}
+                |> observeOn(scheduler)
+
 
 				return
 					combineLatest(
