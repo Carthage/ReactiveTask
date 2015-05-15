@@ -98,6 +98,7 @@
 				D0BFEA591A2D1E5E00E23194 /* Products */,
 			);
 			sourceTree = "<group>";
+			usesTabs = 1;
 		};
 		D0BFEA591A2D1E5E00E23194 /* Products */ = {
 			isa = PBXGroup;
