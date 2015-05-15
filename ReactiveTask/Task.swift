@@ -175,6 +175,8 @@ private final class Pipe {
 					}
 				}, completed: {
 					dispatch_io_close(channel, 0)
+				}, interrupted: {
+					sendInterrupted(observer)
 				})
 			}
 
