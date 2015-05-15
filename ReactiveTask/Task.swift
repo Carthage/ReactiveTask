@@ -47,13 +47,9 @@ public struct TaskDescription {
 
 extension TaskDescription: Printable {
 	public var description: String {
-		var str = "\(launchPath)"
-
-		for arg in arguments {
-			str += " \(arg)"
+		return arguments.reduce(launchPath) { str, arg in
+			return str + " \(arg)"
 		}
-
-		return str
 	}
 }
 
