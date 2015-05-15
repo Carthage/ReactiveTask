@@ -151,7 +151,7 @@ private final class Pipe {
 	/// Returns a producer that will complete or error.
 	func writeDataFromProducer(producer: SignalProducer<NSData, NoError>) -> SignalProducer<(), ReactiveTaskError> {
 		return SignalProducer { observer, disposable in
-			let queue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.readQueue", DISPATCH_QUEUE_SERIAL)
+			let queue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.writeQueue", DISPATCH_QUEUE_SERIAL)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
