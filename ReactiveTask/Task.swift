@@ -108,9 +108,8 @@ private final class Pipe {
 	/// After starting the returned producer, `readFD` should not be used
 	/// anywhere else, as it may close unexpectedly.
 	func transferReadsToProducer() -> SignalProducer<dispatch_data_t, ReactiveTaskError> {
-		let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
-
 		return SignalProducer { observer, disposable in
+			let queue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.readQueue", DISPATCH_QUEUE_SERIAL)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
@@ -151,9 +150,8 @@ private final class Pipe {
 	///
 	/// Returns a producer that will complete or error.
 	func writeDataFromProducer(producer: SignalProducer<NSData, NoError>) -> SignalProducer<(), ReactiveTaskError> {
-		let queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
-
 		return SignalProducer { observer, disposable in
+			let queue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.writeQueue", DISPATCH_QUEUE_SERIAL)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
