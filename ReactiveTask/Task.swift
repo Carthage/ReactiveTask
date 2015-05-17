@@ -55,6 +55,9 @@ extension TaskDescription: Printable {
 
 /// A private class used to encapsulate a Unix pipe.
 private final class Pipe {
+	static let readQueue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.readQueue", DISPATCH_QUEUE_SERIAL)
+	static let writeQueue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.writeQueue", DISPATCH_QUEUE_SERIAL)
+
 	/// The file descriptor for reading data.
 	let readFD: Int32
 
@@ -105,7 +108,7 @@ private final class Pipe {
 	/// anywhere else, as it may close unexpectedly.
 	func transferReadsToProducer() -> SignalProducer<dispatch_data_t, ReactiveTaskError> {
 		return SignalProducer { observer, disposable in
-			let queue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.readQueue", DISPATCH_QUEUE_SERIAL)
+			let queue = Pipe.readQueue
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
@@ -147,7 +150,7 @@ private final class Pipe {
 	/// Returns a producer that will complete or error.
 	func writeDataFromProducer(producer: SignalProducer<NSData, NoError>) -> SignalProducer<(), ReactiveTaskError> {
 		return SignalProducer { observer, disposable in
-			let queue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.writeQueue", DISPATCH_QUEUE_SERIAL)
+			let queue = Pipe.writeQueue
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
@@ -263,12 +266,9 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 			}
 		}
 
-		let pipes = SignalProducer(result: Pipe.create()) |> zipWith(SignalProducer(result: Pipe.create()))
-
-		// The Swift compiler can't figure out that we're applying this to
-		// a Producer when using |> :(
-		flatMap(.Merge,
-			{ stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
+		SignalProducer(result: Pipe.create())
+			|> zipWith(SignalProducer(result: Pipe.create()))
+			|> flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
 				let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
@@ -314,7 +314,7 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 							return .failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 						}
 					}
-			})(producer: pipes)
+			}
 			|> startWithSignal { signal, taskDisposable in
 				disposable.addDisposable(taskDisposable)
 				signal.observe(observer)
