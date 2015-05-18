@@ -263,12 +263,9 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 			}
 		}
 
-		let pipes = SignalProducer(result: Pipe.create()) |> zipWith(SignalProducer(result: Pipe.create()))
-
-		// The Swift compiler can't figure out that we're applying this to
-		// a Producer when using |> :(
-		flatMap(.Merge,
-			{ stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
+		SignalProducer(result: Pipe.create())
+			|> zipWith(SignalProducer(result: Pipe.create()))
+			|> flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
 				let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
@@ -314,7 +311,7 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 							return .failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 						}
 					}
-			})(producer: pipes)
+			}
 			|> startWithSignal { signal, taskDisposable in
 				disposable.addDisposable(taskDisposable)
 				signal.observe(observer)
