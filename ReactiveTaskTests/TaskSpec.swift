@@ -23,7 +23,7 @@ class TaskSpec: QuickSpec {
 			standardError.value = NSData()
 		}
 
-		func accumulatingSinkForProperty(property: MutableProperty<NSData>) -> SinkOf<NSData> {
+		func accumulatingSinkForProperty(property: MutableProperty<NSData>) -> SinkOfNSData {
 			let (signal, sink) = Signal<NSData, NoError>.pipe()
 
 			property <~ signal
@@ -34,7 +34,7 @@ class TaskSpec: QuickSpec {
 							return buffer
 						}
 
-			return SinkOf { data in
+			return SinkOfNSData { data in
 				sendNext(sink, data)
 			}
 		}
