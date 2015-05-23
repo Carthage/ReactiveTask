@@ -263,52 +263,55 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 		}
 
 		SignalProducer(result: Pipe.create(queue))
-			|> zipWith(SignalProducer(result: Pipe.create(queue)))
-			|> flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
+			|> flatMap(.Concat) { stdoutPipe -> SignalProducer<NSData, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput, scheduler)
-				let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError, scheduler)
 
-				let terminationStatusProducer = SignalProducer<Int32, NoError> { observer, disposable in
-					task.terminationHandler = { task in
-						sendNext(observer, task.terminationStatus)
-						sendCompleted(observer)
-					}
+				return SignalProducer(result: Pipe.create(queue))
+					|> flatMap(.Merge) { stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
+						let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError, scheduler)
 
-					task.standardOutput = stdoutPipe.writeHandle
-					task.standardError = stderrPipe.writeHandle
+						let terminationStatusProducer = SignalProducer<Int32, NoError> { observer, disposable in
+							task.terminationHandler = { task in
+								sendNext(observer, task.terminationStatus)
+								sendCompleted(observer)
+							}
 
-					if disposable.disposed {
-						stdoutPipe.closePipe()
-						stderrPipe.closePipe()
-						stdinProducer.start().dispose()
-						return
-					}
+							task.standardOutput = stdoutPipe.writeHandle
+							task.standardError = stderrPipe.writeHandle
 
-					task.launch()
-					close(stdoutPipe.writeFD)
-					close(stderrPipe.writeFD)
+							if disposable.disposed {
+								stdoutPipe.closePipe()
+								stderrPipe.closePipe()
+								stdinProducer.start().dispose()
+								return
+							}
 
-					let stdinDisposable = stdinProducer.start()
-					disposable.addDisposable(stdinDisposable)
+							task.launch()
+							close(stdoutPipe.writeFD)
+							close(stderrPipe.writeFD)
 
-					disposable.addDisposable {
-						task.terminate()
-					}
-				}
+							let stdinDisposable = stdinProducer.start()
+							disposable.addDisposable(stdinDisposable)
 
-				return
-					zip(
-						stdoutProducer,
-						stderrProducer,
-						terminationStatusProducer |> promoteErrors(ReactiveTaskError.self)
-					)
-					|> tryMap { stdoutData, stderrData, terminationStatus -> Result<NSData, ReactiveTaskError> in
-						if terminationStatus == EXIT_SUCCESS {
-							return .success(stdoutData)
-						} else {
-							let errorString = (stderrData.length > 0 ? String(UTF8String: UnsafePointer<CChar>(stderrData.bytes)) : nil)
-							return .failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
+							disposable.addDisposable {
+								task.terminate()
+							}
 						}
+
+						return
+							zip(
+								stdoutProducer,
+								stderrProducer,
+								terminationStatusProducer |> promoteErrors(ReactiveTaskError.self)
+							)
+							|> tryMap { stdoutData, stderrData, terminationStatus -> Result<NSData, ReactiveTaskError> in
+								if terminationStatus == EXIT_SUCCESS {
+									return .success(stdoutData)
+								} else {
+									let errorString = (stderrData.length > 0 ? String(UTF8String: UnsafePointer<CChar>(stderrData.bytes)) : nil)
+									return .failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
+								}
+							}
 					}
 			}
 			|> observeOn(scheduler)
