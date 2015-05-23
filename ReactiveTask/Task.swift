@@ -190,8 +190,8 @@ private final class Pipe {
 ///
 /// If `forwardingSink` is non-nil, each incremental piece of data will be sent
 /// to it as data is received.
-private func aggregateDataReadFromPipe<S: SchedulerType>(pipe: Pipe, forwardingSink: SinkOf<NSData>?, scheduler: S) -> SignalProducer<NSData, ReactiveTaskError> {
-	let readProducer = pipe.transferReadsToProducer() |> observeOn(scheduler)
+private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData>?) -> SignalProducer<NSData, ReactiveTaskError> {
+	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
 		let buffer = MutableBox<dispatch_data_t?>(nil)
@@ -230,9 +230,7 @@ private func aggregateDataReadFromPipe<S: SchedulerType>(pipe: Pipe, forwardingS
 /// upon success.
 public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<NSData>? = nil, standardError: SinkOf<NSData>? = nil) -> SignalProducer<NSData, ReactiveTaskError> {
 	return SignalProducer { observer, disposable in
-		let taskString = taskDescription.description
-		let queue = dispatch_queue_create(taskString + " (pipe)", DISPATCH_QUEUE_CONCURRENT)
-		let scheduler = QueueScheduler(queue: queue, name: taskString)
+		let queue = dispatch_queue_create(taskDescription.description, DISPATCH_QUEUE_CONCURRENT)
 
 		let task = NSTask()
 		task.launchPath = taskDescription.launchPath
@@ -264,11 +262,11 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 
 		SignalProducer(result: Pipe.create(queue))
 			|> flatMap(.Concat) { stdoutPipe -> SignalProducer<NSData, ReactiveTaskError> in
-				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput, scheduler)
+				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
 
 				return SignalProducer(result: Pipe.create(queue))
 					|> flatMap(.Merge) { stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
-						let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError, scheduler)
+						let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
 						let terminationStatusProducer = SignalProducer<Int32, NoError> { observer, disposable in
 							task.terminationHandler = { task in
@@ -314,7 +312,6 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 							}
 					}
 			}
-			|> observeOn(scheduler)
 			|> startWithSignal { signal, taskDisposable in
 				disposable.addDisposable(taskDisposable)
 				signal.observe(observer)
