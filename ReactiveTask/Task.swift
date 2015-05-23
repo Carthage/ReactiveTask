@@ -280,7 +280,12 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 							if disposable.disposed {
 								stdoutPipe.closePipe()
 								stderrPipe.closePipe()
-								stdinProducer.start().dispose()
+
+								// Clean up the stdin pipe in a roundabout way.
+								stdinProducer.startWithSignal { signal, signalDisposable in
+									signalDisposable.dispose()
+								}
+
 								return
 							}
 
@@ -288,8 +293,9 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 							close(stdoutPipe.writeFD)
 							close(stderrPipe.writeFD)
 
-							let stdinDisposable = stdinProducer.start()
-							disposable.addDisposable(stdinDisposable)
+							stdinProducer.startWithSignal { signal, signalDisposable in
+								disposable.addDisposable(signalDisposable)
+							}
 
 							disposable.addDisposable {
 								task.terminate()
