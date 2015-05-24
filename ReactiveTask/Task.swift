@@ -230,7 +230,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData
 /// upon success.
 public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<NSData>? = nil, standardError: SinkOf<NSData>? = nil) -> SignalProducer<NSData, ReactiveTaskError> {
 	return SignalProducer { observer, disposable in
-		let queue = dispatch_queue_create(taskDescription.description, DISPATCH_QUEUE_CONCURRENT)
+		let queue = dispatch_queue_create(taskDescription.description, DISPATCH_QUEUE_SERIAL)
 
 		let task = NSTask()
 		task.launchPath = taskDescription.launchPath
