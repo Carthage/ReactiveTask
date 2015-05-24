@@ -12,9 +12,9 @@ import ReactiveCocoa
 import Result
 
 #if DEBUG
-public typealias SinkOfNSData = DebugSinkOf<NSData>
+public typealias DataSink = DebugSinkOf<NSData>
 #else
-public typealias SinkOfNSData = SinkOf<NSData>
+public typealias DataSink = SinkOf<NSData>
 #endif
 
 /// Describes how to execute a shell command.
@@ -194,7 +194,7 @@ private final class Pipe {
 ///
 /// If `forwardingSink` is non-nil, each incremental piece of data will be sent
 /// to it as data is received.
-private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOfNSData?) -> SignalProducer<NSData, ReactiveTaskError> {
+private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: DataSink?) -> SignalProducer<NSData, ReactiveTaskError> {
 	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
@@ -232,7 +232,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOfNSData?
 /// Returns a producer that will launch the task when started, then send one
 /// `NSData` value (representing aggregated data from `stdout`) and complete
 /// upon success.
-public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOfNSData? = nil, standardError: SinkOfNSData? = nil) -> SignalProducer<NSData, ReactiveTaskError> {
+public func launchTask(taskDescription: TaskDescription, standardOutput: DataSink? = nil, standardError: DataSink? = nil) -> SignalProducer<NSData, ReactiveTaskError> {
 	return SignalProducer { observer, disposable in
 		let task = NSTask()
 		task.launchPath = taskDescription.launchPath
