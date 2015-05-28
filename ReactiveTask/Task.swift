@@ -43,6 +43,14 @@ public struct TaskDescription {
 		self.environment = environment
 		self.standardInput = standardInput
 	}
+	
+	/// A GCD group which to wait completion
+	private static var group = dispatch_group_create()
+	
+	/// wait for all task termination
+	public static func waitForAllTaskTermination() {
+		dispatch_group_wait(TaskDescription.group, DISPATCH_TIME_FOREVER)
+	}
 }
 
 extension TaskDescription: Printable {
@@ -63,6 +71,9 @@ private final class Pipe {
 
 	/// A GCD queue upon which to deliver I/O callbacks.
 	let queue: dispatch_queue_t
+	
+	/// A GCD group which to wait completion
+	let group: dispatch_group_t
 
 	/// Creates an NSFileHandle corresponding to the `readFD`. The file handle
 	/// will not automatically close the descriptor.
@@ -77,20 +88,21 @@ private final class Pipe {
 	}
 
 	/// Initializes a pipe object using existing file descriptors.
-	init(readFD: Int32, writeFD: Int32, queue: dispatch_queue_t) {
+	init(readFD: Int32, writeFD: Int32, queue: dispatch_queue_t, group: dispatch_group_t) {
 		precondition(readFD >= 0)
 		precondition(writeFD >= 0)
 
 		self.readFD = readFD
 		self.writeFD = writeFD
 		self.queue = queue
+		self.group = group
 	}
 
 	/// Instantiates a new descriptor pair.
-	class func create(queue: dispatch_queue_t) -> Result<Pipe, ReactiveTaskError> {
+	class func create(queue: dispatch_queue_t, _ group: dispatch_group_t) -> Result<Pipe, ReactiveTaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
-			return .success(self(readFD: fildes[0], writeFD: fildes[1], queue: queue))
+			return .success(self(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
 		} else {
 			return .failure(.POSIXError(errno))
 		}
@@ -109,6 +121,7 @@ private final class Pipe {
 	/// anywhere else, as it may close unexpectedly.
 	func transferReadsToProducer() -> SignalProducer<dispatch_data_t, ReactiveTaskError> {
 		return SignalProducer { observer, disposable in
+			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
@@ -117,6 +130,7 @@ private final class Pipe {
 				}
 
 				close(self.readFD)
+				dispatch_group_leave(self.group)
 			}
 
 			dispatch_io_set_low_water(channel, 1)
@@ -150,6 +164,7 @@ private final class Pipe {
 	/// Returns a producer that will complete or error.
 	func writeDataFromProducer(producer: SignalProducer<NSData, NoError>) -> SignalProducer<(), ReactiveTaskError> {
 		return SignalProducer { observer, disposable in
+			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, self.queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
@@ -158,6 +173,7 @@ private final class Pipe {
 				}
 
 				close(self.writeFD)
+				dispatch_group_leave(self.group)
 			}
 
 			producer.startWithSignal { signal, producerDisposable in
@@ -231,6 +247,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData
 public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<NSData>? = nil, standardError: SinkOf<NSData>? = nil) -> SignalProducer<NSData, ReactiveTaskError> {
 	return SignalProducer { observer, disposable in
 		let queue = dispatch_queue_create(taskDescription.description, DISPATCH_QUEUE_SERIAL)
+		let group = TaskDescription.group
 
 		let task = NSTask()
 		task.launchPath = taskDescription.launchPath
@@ -247,7 +264,7 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 		var stdinProducer: SignalProducer<(), ReactiveTaskError> = .empty
 
 		if let input = taskDescription.standardInput {
-			switch Pipe.create(queue) {
+			switch Pipe.create(queue, group) {
 			case let .Success(pipe):
 				task.standardInput = pipe.value.readHandle
 
@@ -260,18 +277,21 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 			}
 		}
 
-		SignalProducer(result: Pipe.create(queue))
+		SignalProducer(result: Pipe.create(queue, group))
 			|> flatMap(.Concat) { stdoutPipe -> SignalProducer<NSData, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
 
-				return SignalProducer(result: Pipe.create(queue))
+				return SignalProducer(result: Pipe.create(queue, group))
 					|> flatMap(.Merge) { stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
 						let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
 						let terminationStatusProducer = SignalProducer<Int32, NoError> { observer, disposable in
+							dispatch_group_enter(group)
+							
 							task.terminationHandler = { task in
 								sendNext(observer, task.terminationStatus)
 								sendCompleted(observer)
+								dispatch_group_leave(group)
 							}
 
 							task.standardOutput = stdoutPipe.writeHandle
