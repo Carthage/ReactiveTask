@@ -61,6 +61,9 @@ private final class Pipe {
 	/// The file descriptor for writing data.
 	let writeFD: Int32
 
+	/// A GCD queue upon which to deliver I/O callbacks.
+	let queue: dispatch_queue_t
+
 	/// Creates an NSFileHandle corresponding to the `readFD`. The file handle
 	/// will not automatically close the descriptor.
 	var readHandle: NSFileHandle {
@@ -74,19 +77,20 @@ private final class Pipe {
 	}
 
 	/// Initializes a pipe object using existing file descriptors.
-	init(readFD: Int32, writeFD: Int32) {
+	init(readFD: Int32, writeFD: Int32, queue: dispatch_queue_t) {
 		precondition(readFD >= 0)
 		precondition(writeFD >= 0)
 
 		self.readFD = readFD
 		self.writeFD = writeFD
+		self.queue = queue
 	}
 
 	/// Instantiates a new descriptor pair.
-	class func create() -> Result<Pipe, ReactiveTaskError> {
+	class func create(queue: dispatch_queue_t) -> Result<Pipe, ReactiveTaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
-			return .success(self(readFD: fildes[0], writeFD: fildes[1]))
+			return .success(self(readFD: fildes[0], writeFD: fildes[1], queue: queue))
 		} else {
 			return .failure(.POSIXError(errno))
 		}
@@ -105,8 +109,7 @@ private final class Pipe {
 	/// anywhere else, as it may close unexpectedly.
 	func transferReadsToProducer() -> SignalProducer<dispatch_data_t, ReactiveTaskError> {
 		return SignalProducer { observer, disposable in
-			let queue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.readQueue", DISPATCH_QUEUE_SERIAL)
-			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, queue) { error in
+			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
 				} else {
@@ -117,7 +120,7 @@ private final class Pipe {
 			}
 
 			dispatch_io_set_low_water(channel, 1)
-			dispatch_io_read(channel, 0, Int.max, queue) { (done, data, error) in
+			dispatch_io_read(channel, 0, Int.max, self.queue) { (done, data, error) in
 				if let data = data {
 					sendNext(observer, data)
 				}
@@ -147,8 +150,7 @@ private final class Pipe {
 	/// Returns a producer that will complete or error.
 	func writeDataFromProducer(producer: SignalProducer<NSData, NoError>) -> SignalProducer<(), ReactiveTaskError> {
 		return SignalProducer { observer, disposable in
-			let queue = dispatch_queue_create("org.carthage.ReactiveTask.Pipe.writeQueue", DISPATCH_QUEUE_SERIAL)
-			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, queue) { error in
+			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, self.queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
 				} else {
@@ -162,9 +164,9 @@ private final class Pipe {
 				disposable.addDisposable(producerDisposable)
 
 				signal.observe(next: { data in
-					let dispatchData = dispatch_data_create(data.bytes, data.length, queue, nil)
+					let dispatchData = dispatch_data_create(data.bytes, data.length, self.queue, nil)
 
-					dispatch_io_write(channel, 0, dispatchData, queue) { (done, data, error) in
+					dispatch_io_write(channel, 0, dispatchData, self.queue) { (done, data, error) in
 						if error != 0 {
 							sendError(observer, .POSIXError(error))
 						}
@@ -228,6 +230,8 @@ private func aggregateDataReadFromPipe(pipe: Pipe, forwardingSink: SinkOf<NSData
 /// upon success.
 public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<NSData>? = nil, standardError: SinkOf<NSData>? = nil) -> SignalProducer<NSData, ReactiveTaskError> {
 	return SignalProducer { observer, disposable in
+		let queue = dispatch_queue_create(taskDescription.description, DISPATCH_QUEUE_SERIAL)
+
 		let task = NSTask()
 		task.launchPath = taskDescription.launchPath
 		task.arguments = taskDescription.arguments
@@ -243,73 +247,75 @@ public func launchTask(taskDescription: TaskDescription, standardOutput: SinkOf<
 		var stdinProducer: SignalProducer<(), ReactiveTaskError> = .empty
 
 		if let input = taskDescription.standardInput {
-			switch Pipe.create() {
+			switch Pipe.create(queue) {
 			case let .Success(pipe):
 				task.standardInput = pipe.value.readHandle
 
-				// FIXME: This is basically a reimplementation of on(started:)
-				// to avoid a compiler crash.
-				stdinProducer = SignalProducer { observer, disposable in
+				stdinProducer = pipe.value.writeDataFromProducer(input) |> on(started: {
 					close(pipe.value.readFD)
-
-					pipe.value.writeDataFromProducer(input).startWithSignal { signal, signalDisposable in
-						disposable.addDisposable(signalDisposable)
-						signal.observe(observer)
-					}
-				}
+				})
 
 			case let .Failure(error):
 				sendError(observer, error.value)
 			}
 		}
 
-		SignalProducer(result: Pipe.create())
-			|> zipWith(SignalProducer(result: Pipe.create()))
-			|> flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
+		SignalProducer(result: Pipe.create(queue))
+			|> flatMap(.Concat) { stdoutPipe -> SignalProducer<NSData, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe, standardOutput)
-				let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
-				let terminationStatusProducer = SignalProducer<Int32, NoError> { observer, disposable in
-					task.terminationHandler = { task in
-						sendNext(observer, task.terminationStatus)
-						sendCompleted(observer)
-					}
+				return SignalProducer(result: Pipe.create(queue))
+					|> flatMap(.Merge) { stderrPipe -> SignalProducer<NSData, ReactiveTaskError> in
+						let stderrProducer = aggregateDataReadFromPipe(stderrPipe, standardError)
 
-					task.standardOutput = stdoutPipe.writeHandle
-					task.standardError = stderrPipe.writeHandle
+						let terminationStatusProducer = SignalProducer<Int32, NoError> { observer, disposable in
+							task.terminationHandler = { task in
+								sendNext(observer, task.terminationStatus)
+								sendCompleted(observer)
+							}
 
-					if disposable.disposed {
-						stdoutPipe.closePipe()
-						stderrPipe.closePipe()
-						stdinProducer.start().dispose()
-						return
-					}
+							task.standardOutput = stdoutPipe.writeHandle
+							task.standardError = stderrPipe.writeHandle
 
-					task.launch()
-					close(stdoutPipe.writeFD)
-					close(stderrPipe.writeFD)
+							if disposable.disposed {
+								stdoutPipe.closePipe()
+								stderrPipe.closePipe()
 
-					let stdinDisposable = stdinProducer.start()
-					disposable.addDisposable(stdinDisposable)
+								// Clean up the stdin pipe in a roundabout way.
+								stdinProducer.startWithSignal { signal, signalDisposable in
+									signalDisposable.dispose()
+								}
 
-					disposable.addDisposable {
-						task.terminate()
-					}
-				}
+								return
+							}
 
-				return
-					combineLatest(
-						stdoutProducer,
-						stderrProducer,
-						terminationStatusProducer |> promoteErrors(ReactiveTaskError.self)
-					)
-					|> tryMap { stdoutData, stderrData, terminationStatus -> Result<NSData, ReactiveTaskError> in
-						if terminationStatus == EXIT_SUCCESS {
-							return .success(stdoutData)
-						} else {
-							let errorString = (stderrData.length > 0 ? String(UTF8String: UnsafePointer<CChar>(stderrData.bytes)) : nil)
-							return .failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
+							task.launch()
+							close(stdoutPipe.writeFD)
+							close(stderrPipe.writeFD)
+
+							stdinProducer.startWithSignal { signal, signalDisposable in
+								disposable.addDisposable(signalDisposable)
+							}
+
+							disposable.addDisposable {
+								task.terminate()
+							}
 						}
+
+						return
+							zip(
+								stdoutProducer,
+								stderrProducer,
+								terminationStatusProducer |> promoteErrors(ReactiveTaskError.self)
+							)
+							|> tryMap { stdoutData, stderrData, terminationStatus -> Result<NSData, ReactiveTaskError> in
+								if terminationStatus == EXIT_SUCCESS {
+									return .success(stdoutData)
+								} else {
+									let errorString = (stderrData.length > 0 ? String(UTF8String: UnsafePointer<CChar>(stderrData.bytes)) : nil)
+									return .failure(.ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
+								}
+							}
 					}
 			}
 			|> startWithSignal { signal, taskDisposable in
