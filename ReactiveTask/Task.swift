@@ -266,6 +266,20 @@ public enum TaskEvent<T> {
 			return box.value
 		}
 	}
+
+	/// Maps over the value embedded in a `Success` event.
+	public func map<U>(transform: T -> U) -> TaskEvent<U> {
+		switch self {
+		case let .StandardOutput(data):
+			return .StandardOutput(data)
+
+		case let .StandardError(data):
+			return .StandardError(data)
+
+		case let .Success(box):
+			return .Success(box.map(transform))
+		}
+	}
 }
 
 public func == <T: Equatable>(lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
