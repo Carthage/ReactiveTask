@@ -252,8 +252,6 @@ public enum TaskEvent<T> {
 
 	/// The task exited successfully (with status 0), and value T was produced
 	/// as a result.
-	///
-	/// No further TaskEvents will occur after this has been sent.
 	case Success(Box<T>)
 
 	/// The resulting value, if the event is `Success`.
@@ -268,7 +266,7 @@ public enum TaskEvent<T> {
 	}
 
 	/// Maps over the value embedded in a `Success` event.
-	public func map<U>(transform: T -> U) -> TaskEvent<U> {
+	public func map<U>(@noescape transform: T -> U) -> TaskEvent<U> {
 		switch self {
 		case let .StandardOutput(data):
 			return .StandardOutput(data)
@@ -277,7 +275,21 @@ public enum TaskEvent<T> {
 			return .StandardError(data)
 
 		case let .Success(box):
-			return .Success(box.map(transform))
+			return .Success(Box(transform(box.value)))
+		}
+	}
+
+	/// Convenience operator for mapping TaskEvents to SignalProducers.
+	public func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
+		switch self {
+		case let .StandardOutput(data):
+			return SignalProducer<TaskEvent<U>, Error>(value: .StandardOutput(data))
+
+		case let .StandardError(data):
+			return SignalProducer<TaskEvent<U>, Error>(value: .StandardError(data))
+
+		case let .Success(box):
+			return transform(box.value) |> ReactiveCocoa.map { .Success(Box($0)) }
 		}
 	}
 }
@@ -313,6 +325,15 @@ extension TaskEvent: Printable {
 
 		case let .Success(value):
 			return "success(\(value))"
+		}
+	}
+}
+
+/// Maps the values inside a stream of TaskEvents into new SignalProducers.
+public func flatMapTaskEvents<T, U, Error>(strategy: FlattenStrategy, transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<T>, Error> -> SignalProducer<TaskEvent<U>, Error> {
+	return { producer in
+		return producer |> flatMap(strategy) { taskEvent in
+			return taskEvent.producerMap(transform)
 		}
 	}
 }
