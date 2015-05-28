@@ -317,6 +317,16 @@ extension TaskEvent: Printable {
 	}
 }
 
+/// Ignores incremental standard output and standard error data from the given
+/// task, sending only a single value with the final, aggregated result.
+public func ignoreTaskData<T, Error>(signal: Signal<TaskEvent<T>, Error>) -> Signal<T, Error> {
+	return signal
+		|> map { event in
+			return event.value.map { $0 }
+		}
+		|> ignoreNil
+}
+
 /// Launches a new shell task, using the parameters from `taskDescription`.
 ///
 /// Returns a producer that will launch the task when started, then send
