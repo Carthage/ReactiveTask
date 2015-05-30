@@ -112,6 +112,8 @@ private final class Pipe {
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
+				} else if error == ECANCELED {
+					sendInterrupted(observer)
 				} else {
 					sendError(observer, .POSIXError(error))
 				}
@@ -125,7 +127,9 @@ private final class Pipe {
 					sendNext(observer, data)
 				}
 
-				if error != 0 {
+				if error == ECANCELED {
+					sendInterrupted(observer)
+				} else if error != 0 {
 					sendError(observer, .POSIXError(error))
 				}
 
@@ -153,6 +157,8 @@ private final class Pipe {
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, self.queue) { error in
 				if error == 0 {
 					sendCompleted(observer)
+				} else if error == ECANCELED {
+					sendInterrupted(observer)
 				} else {
 					sendError(observer, .POSIXError(error))
 				}
@@ -167,7 +173,9 @@ private final class Pipe {
 					let dispatchData = dispatch_data_create(data.bytes, data.length, self.queue, nil)
 
 					dispatch_io_write(channel, 0, dispatchData, self.queue) { (done, data, error) in
-						if error != 0 {
+						if error == ECANCELED {
+							sendInterrupted(observer)
+						} else if error != 0 {
 							sendError(observer, .POSIXError(error))
 						}
 					}
