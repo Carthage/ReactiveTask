@@ -444,11 +444,17 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 							task.terminationHandler = { task in
 								let terminationStatus = task.terminationStatus
 								if terminationStatus == EXIT_SUCCESS {
-									disposable += stdoutAggregated
+									// Wait for stderr to finish, then pass
+									// through stdout.
+									disposable += stderrAggregated
+										|> then(stdoutAggregated)
 										|> map { data in .Success(Box(data)) }
 										|> start(observer)
 								} else {
-									disposable += stderrAggregated
+									// Wait for stdout to finish, then pass
+									// through stderr.
+									disposable += stdoutAggregated
+										|> then(stderrAggregated)
 										|> flatMap(.Concat) { data in
 											let errorString = (data.length > 0 ? String(UTF8String: UnsafePointer<CChar>(data.bytes)) : nil)
 											return SignalProducer(error: .ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
