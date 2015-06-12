@@ -409,100 +409,96 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 			}
 		}
 
-		SignalProducer(result: Pipe.create(queue, group))
-			|> flatMap(.Concat) { stdoutPipe -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> in
+		SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
+			|> flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe)
+				let stderrProducer = aggregateDataReadFromPipe(stderrPipe)
 
-				return SignalProducer(result: Pipe.create(queue, group))
-					|> flatMap(.Merge) { stderrPipe -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> in
-						let stderrProducer = aggregateDataReadFromPipe(stderrPipe)
+				return SignalProducer { observer, disposable in
+					let (stdoutAggregated, stdoutAggregatedSink) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
+					let (stderrAggregated, stderrAggregatedSink) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
 
-						return SignalProducer { observer, disposable in
-							let (stdoutAggregated, stdoutAggregatedSink) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
-							let (stderrAggregated, stderrAggregatedSink) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
+					stdoutProducer.startWithSignal { signal, signalDisposable in
+						disposable += signalDisposable
 
-							stdoutProducer.startWithSignal { signal, signalDisposable in
-								disposable += signalDisposable
+						signal.observe(next: { readData in
+							switch readData {
+							case let .Chunk(data):
+								sendNext(observer, .StandardOutput(data))
 
-								signal.observe(next: { readData in
-									switch readData {
-									case let .Chunk(data):
-										sendNext(observer, .StandardOutput(data))
-
-									case let .Aggregated(data):
-										sendNext(stdoutAggregatedSink, data)
-									}
-								}, error: { error in
-									sendError(observer, error)
-									sendError(stdoutAggregatedSink, error)
-								}, completed: {
-									sendCompleted(stdoutAggregatedSink)
-								}, interrupted: {
-									sendInterrupted(stdoutAggregatedSink)
-								})
+							case let .Aggregated(data):
+								sendNext(stdoutAggregatedSink, data)
 							}
-
-							stderrProducer.startWithSignal { signal, signalDisposable in
-								disposable += signalDisposable
-
-								signal.observe(next: { readData in
-									switch readData {
-									case let .Chunk(data):
-										sendNext(observer, .StandardError(data))
-
-									case let .Aggregated(data):
-										sendNext(stderrAggregatedSink, data)
-									}
-								}, error: { error in
-									sendError(observer, error)
-									sendError(stderrAggregatedSink, error)
-								}, completed: {
-									sendCompleted(stderrAggregatedSink)
-								}, interrupted: {
-									sendInterrupted(stderrAggregatedSink)
-								})
-							}
-
-							task.standardOutput = stdoutPipe.writeHandle
-							task.standardError = stderrPipe.writeHandle
-
-							dispatch_group_enter(group)
-							task.terminationHandler = { task in
-								let terminationStatus = task.terminationStatus
-								if terminationStatus == EXIT_SUCCESS {
-									// Wait for stderr to finish, then pass
-									// through stdout.
-									disposable += stderrAggregated
-										|> then(stdoutAggregated)
-										|> map { data in .Success(Box(data)) }
-										|> start(observer)
-								} else {
-									// Wait for stdout to finish, then pass
-									// through stderr.
-									disposable += stdoutAggregated
-										|> then(stderrAggregated)
-										|> flatMap(.Concat) { data in
-											let errorString = (data.length > 0 ? String(UTF8String: UnsafePointer<CChar>(data.bytes)) : nil)
-											return SignalProducer(error: .ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
-										}
-										|> start(observer)
-								}
-								dispatch_group_leave(group)
-							}
-
-							task.launch()
-							close(stdoutPipe.writeFD)
-							close(stderrPipe.writeFD)
-
-							stdinProducer.startWithSignal { signal, signalDisposable in
-								disposable += signalDisposable
-							}
-
-							disposable.addDisposable {
-								task.terminate()
-							}
-						}
+						}, error: { error in
+							sendError(observer, error)
+							sendError(stdoutAggregatedSink, error)
+						}, completed: {
+							sendCompleted(stdoutAggregatedSink)
+						}, interrupted: {
+							sendInterrupted(stdoutAggregatedSink)
+						})
 					}
+
+					stderrProducer.startWithSignal { signal, signalDisposable in
+						disposable += signalDisposable
+
+						signal.observe(next: { readData in
+							switch readData {
+							case let .Chunk(data):
+								sendNext(observer, .StandardError(data))
+
+							case let .Aggregated(data):
+								sendNext(stderrAggregatedSink, data)
+							}
+						}, error: { error in
+							sendError(observer, error)
+							sendError(stderrAggregatedSink, error)
+						}, completed: {
+							sendCompleted(stderrAggregatedSink)
+						}, interrupted: {
+							sendInterrupted(stderrAggregatedSink)
+						})
+					}
+
+					task.standardOutput = stdoutPipe.writeHandle
+					task.standardError = stderrPipe.writeHandle
+
+					dispatch_group_enter(group)
+					task.terminationHandler = { task in
+						let terminationStatus = task.terminationStatus
+						if terminationStatus == EXIT_SUCCESS {
+							// Wait for stderr to finish, then pass
+							// through stdout.
+							disposable += stderrAggregated
+								|> then(stdoutAggregated)
+								|> map { data in .Success(Box(data)) }
+								|> start(observer)
+						} else {
+							// Wait for stdout to finish, then pass
+							// through stderr.
+							disposable += stdoutAggregated
+								|> then(stderrAggregated)
+								|> flatMap(.Concat) { data in
+									let errorString = (data.length > 0 ? String(UTF8String: UnsafePointer<CChar>(data.bytes)) : nil)
+									return SignalProducer(error: .ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
+								}
+								|> start(observer)
+						}
+						dispatch_group_leave(group)
+					}
+
+					task.launch()
+					close(stdoutPipe.writeFD)
+					close(stderrPipe.writeFD)
+
+					stdinProducer.startWithSignal { signal, signalDisposable in
+						disposable += signalDisposable
+					}
+
+					disposable.addDisposable {
+						task.terminate()
+					}
+				}
 			}
 			|> startWithSignal { signal, taskDisposable in
 				disposable.addDisposable(taskDisposable)
