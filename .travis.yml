@@ -1,0 +1,9 @@
+language: objective-c
+osx_image: beta-xcode6.3
+xcode_workspace: ReactiveTask.xcworkspace
+xcode_scheme: ReactiveTask
+script: script/cibuild
+notifications:
+  email: false
+  slack:
+    secure: Nh1mbn1RzYrI5tIY52gNrMy+PX1hdq2rIAJHxJjeiWjQDYfIoynhQ/2NIKs6Y0b0E5GIQEtF1fereyWdxcoEFGloY3cq4HZ7dgqr9kzOHrlDMp80fWbcoTqrgbOsKreFFtrv413d5+YcNkJvkYRfnxbuWLPZPszrcbw82TyRL60=
