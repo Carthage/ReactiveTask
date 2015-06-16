@@ -406,6 +406,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 
 			case let .Failure(error):
 				sendError(observer, error.value)
+				return
 			}
 		}
 
