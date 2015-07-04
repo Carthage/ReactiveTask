@@ -6,7 +6,6 @@
 //  Copyright (c) 2014 Carthage. All rights reserved.
 //
 
-import Box
 import Foundation
 import ReactiveCocoa
 import Result
@@ -53,7 +52,7 @@ public struct TaskDescription {
 	}
 }
 
-extension TaskDescription: Printable {
+extension TaskDescription: CustomStringConvertible {
 	public var description: String {
 		return arguments.reduce(launchPath) { str, arg in
 			return str + " \(arg)"
@@ -102,7 +101,7 @@ private final class Pipe {
 	class func create(queue: dispatch_queue_t, _ group: dispatch_group_t) -> Result<Pipe, ReactiveTaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
-			return .success(self(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
+			return .success(self.init(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
 		} else {
 			return .failure(.POSIXError(errno))
 		}
@@ -240,7 +239,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
-		let buffer = MutableBox<dispatch_data_t?>(nil)
+		var buffer: dispatch_data_t?
 
 		readProducer.startWithSignal { signal, signalDisposable in
 			disposable.addDisposable(signalDisposable)
@@ -248,15 +247,15 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 			signal.observe(next: { data in
 				sendNext(observer, .chunk(data))
 
-				if let existingBuffer = buffer.value {
-					buffer.value = dispatch_data_create_concat(existingBuffer, data)
+				if let existingBuffer = buffer {
+					buffer = dispatch_data_create_concat(existingBuffer, data)
 				} else {
-					buffer.value = data
+					buffer = data
 				}
 			}, error: { error in
 				sendError(observer, error)
 			}, completed: {
-				sendNext(observer, .aggregated(buffer.value))
+				sendNext(observer, .aggregated(buffer))
 				sendCompleted(observer)
 			}, interrupted: {
 				sendInterrupted(observer)
@@ -276,7 +275,7 @@ public enum TaskEvent<T> {
 
 	/// The task exited successfully (with status 0), and value T was produced
 	/// as a result.
-	case Success(Box<T>)
+	case Success(T)
 
 	/// The resulting value, if the event is `Success`.
 	public var value: T? {
@@ -284,8 +283,8 @@ public enum TaskEvent<T> {
 		case .StandardOutput, .StandardError:
 			return nil
 
-		case let .Success(box):
-			return box.value
+		case let .Success(value):
+			return value
 		}
 	}
 
@@ -298,8 +297,8 @@ public enum TaskEvent<T> {
 		case let .StandardError(data):
 			return .StandardError(data)
 
-		case let .Success(box):
-			return .Success(Box(transform(box.value)))
+		case let .Success(value):
+			return .Success(transform(value))
 		}
 	}
 
@@ -312,8 +311,8 @@ public enum TaskEvent<T> {
 		case let .StandardError(data):
 			return SignalProducer<TaskEvent<U>, Error>(value: .StandardError(data))
 
-		case let .Success(box):
-			return transform(box.value) |> ReactiveCocoa.map { .Success(Box($0)) }
+		case let .Success(value):
+			return transform(value) |> ReactiveCocoa.map { .Success($0) }
 		}
 	}
 }
@@ -334,7 +333,7 @@ public func == <T: Equatable>(lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
 	}
 }
 
-extension TaskEvent: Printable {
+extension TaskEvent: CustomStringConvertible {
 	public var description: String {
 		func dataDescription(data: NSData) -> String {
 			return NSString(data: data, encoding: NSUTF8StringEncoding).map { $0 as String } ?? data.description
@@ -398,14 +397,14 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 		if let input = taskDescription.standardInput {
 			switch Pipe.create(queue, group) {
 			case let .Success(pipe):
-				task.standardInput = pipe.value.readHandle
+				task.standardInput = pipe.readHandle
 
-				stdinProducer = pipe.value.writeDataFromProducer(input) |> on(started: {
-					close(pipe.value.readFD)
+				stdinProducer = pipe.writeDataFromProducer(input) |> on(started: {
+					close(pipe.readFD)
 				})
 
 			case let .Failure(error):
-				sendError(observer, error.value)
+				sendError(observer, error)
 				return
 			}
 		}
@@ -472,7 +471,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 							// through stdout.
 							disposable += stderrAggregated
 								|> then(stdoutAggregated)
-								|> map { data in .Success(Box(data)) }
+								|> map { data in .Success(data) }
 								|> start(observer)
 						} else {
 							// Wait for stdout to finish, then pass

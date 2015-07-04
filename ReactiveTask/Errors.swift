@@ -18,7 +18,7 @@ public enum ReactiveTaskError {
 	case POSIXError(Int32)
 }
 
-extension ReactiveTaskError: ErrorType {
+extension ReactiveTaskError: ReactiveCocoa.ErrorType {
 	public var nsError: NSError {
 		switch self {
 		case let .POSIXError(code):
@@ -32,7 +32,7 @@ extension ReactiveTaskError: ErrorType {
 	}
 }
 
-extension ReactiveTaskError: Printable {
+extension ReactiveTaskError: CustomStringConvertible {
 	public var description: String {
 		switch self {
 		case let .ShellTaskFailed(exitCode, standardError):
@@ -43,7 +43,7 @@ extension ReactiveTaskError: Printable {
 
 			return description
 
-		case let .POSIXError:
+		case .POSIXError:
 			return nsError.description
 		}
 	}
