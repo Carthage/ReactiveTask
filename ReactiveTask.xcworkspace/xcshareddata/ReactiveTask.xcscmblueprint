@@ -1,0 +1,63 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "4A8B372742AB6A9F7C003CD6A71C6422ECB61DE9+++E72B1B9",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "51B210D0D41486D3ADD6940D57E4480BBD4DE4C5+++A3FCAF3" : 0,
+    "956D2B21DD155C49504BB67697A67F7C5351A353+++6A59FE6" : 0,
+    "E084C86B03F81D63323C9E7510697EA528A758C7+++254F926" : 0,
+    "95438028B10BBB846574013D29F154A00556A9D1+++EF8F7AD" : 0,
+    "4A8B372742AB6A9F7C003CD6A71C6422ECB61DE9+++E72B1B9" : 0,
+    "D0725CAC6FF2D66F2C83C2C48DC12106D42DAA64+++38D69C2" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "45CB026B-B34D-49F1-A730-20C0B997837C",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "51B210D0D41486D3ADD6940D57E4480BBD4DE4C5+++A3FCAF3" : "ReactiveTaskCarthage\/Checkouts\/ReactiveCocoa",
+    "956D2B21DD155C49504BB67697A67F7C5351A353+++6A59FE6" : "ReactiveTaskCarthage\/Checkouts\/Result",
+    "E084C86B03F81D63323C9E7510697EA528A758C7+++254F926" : "ReactiveTaskCarthage\/Checkouts\/xcconfigs",
+    "95438028B10BBB846574013D29F154A00556A9D1+++EF8F7AD" : "ReactiveTaskCarthage\/Checkouts\/Nimble",
+    "4A8B372742AB6A9F7C003CD6A71C6422ECB61DE9+++E72B1B9" : "ReactiveTask",
+    "D0725CAC6FF2D66F2C83C2C48DC12106D42DAA64+++38D69C2" : "ReactiveTaskCarthage\/Checkouts\/Quick"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "ReactiveTask",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 203,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "ReactiveTask.xcworkspace",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "github.com:mattprowse\/ReactiveTask.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "4A8B372742AB6A9F7C003CD6A71C6422ECB61DE9+++E72B1B9"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/ReactiveCocoa\/ReactiveCocoa.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "51B210D0D41486D3ADD6940D57E4480BBD4DE4C5+++A3FCAF3"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/Quick\/Nimble.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "95438028B10BBB846574013D29F154A00556A9D1+++EF8F7AD"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/antitypical\/Result.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "956D2B21DD155C49504BB67697A67F7C5351A353+++6A59FE6"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/Quick\/Quick.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "D0725CAC6FF2D66F2C83C2C48DC12106D42DAA64+++38D69C2"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/jspahrsummers\/xcconfigs.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "E084C86B03F81D63323C9E7510697EA528A758C7+++254F926"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/jspahrsummers\/xcconfigs.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "E084C86B03F81D63323C9E7510697EA528A758C7+++254F926"
+    }
+  ]
+}

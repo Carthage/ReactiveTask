@@ -18,16 +18,22 @@ public enum ReactiveTaskError {
 	case POSIXError(Int32)
 }
 
-extension ReactiveTaskError: ReactiveCocoa.ErrorType {
-	public var nsError: NSError {
+extension ReactiveTaskError: ErrorType {
+	public var _domain: String {
 		switch self {
-		case let .POSIXError(code):
-			return NSError(domain: NSPOSIXErrorDomain, code: Int(code), userInfo: nil)
-
-		default:
-			return NSError(domain: "org.carthage.ReactiveTask", code: 0, userInfo: [
-				NSLocalizedDescriptionKey: self.description
-			])
+		case .ShellTaskFailed:
+			return "org.carthage.ReactiveTask"
+		case POSIXError:
+			return NSPOSIXErrorDomain
+		}
+	}
+	
+	public var _code: Int {
+		switch self {
+		case .ShellTaskFailed:
+			return 0
+		case let POSIXError(code):
+			return Int(code)
 		}
 	}
 }
@@ -43,8 +49,8 @@ extension ReactiveTaskError: CustomStringConvertible {
 
 			return description
 
-		case .POSIXError:
-			return nsError.description
+		case let .POSIXError(code):
+			return NSError(domain: NSPOSIXErrorDomain, code: Int(code), userInfo: nil).description
 		}
 	}
 }

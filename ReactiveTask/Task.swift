@@ -312,7 +312,7 @@ public enum TaskEvent<T> {
 			return SignalProducer<TaskEvent<U>, Error>(value: .StandardError(data))
 
 		case let .Success(value):
-			return transform(value) |> ReactiveCocoa.map { .Success($0) }
+			return transform(value).map { .Success($0) }
 		}
 	}
 }
@@ -355,7 +355,7 @@ extension TaskEvent: CustomStringConvertible {
 /// Maps the values inside a stream of TaskEvents into new SignalProducers.
 public func flatMapTaskEvents<T, U, Error>(strategy: FlattenStrategy, transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<T>, Error> -> SignalProducer<TaskEvent<U>, Error> {
 	return { producer in
-		return producer |> flatMap(strategy) { taskEvent in
+		return producer.flatMap(strategy) { taskEvent in
 			return taskEvent.producerMap(transform)
 		}
 	}
@@ -365,10 +365,10 @@ public func flatMapTaskEvents<T, U, Error>(strategy: FlattenStrategy, transform:
 /// task, sending only a single value with the final, aggregated result.
 public func ignoreTaskData<T, Error>(signal: Signal<TaskEvent<T>, Error>) -> Signal<T, Error> {
 	return signal
-		|> map { event in
+		.map { event in
 			return event.value.map { $0 }
 		}
-		|> ignoreNil
+		.ignoreNil()
 }
 
 /// Launches a new shell task, using the parameters from `taskDescription`.
@@ -399,7 +399,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 			case let .Success(pipe):
 				task.standardInput = pipe.readHandle
 
-				stdinProducer = pipe.writeDataFromProducer(input) |> on(started: {
+				stdinProducer = pipe.writeDataFromProducer(input).on(started: {
 					close(pipe.readFD)
 				})
 
@@ -410,7 +410,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 		}
 
 		SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
-			|> flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> in
+			.flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe)
 				let stderrProducer = aggregateDataReadFromPipe(stderrPipe)
 
@@ -470,19 +470,19 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 							// Wait for stderr to finish, then pass
 							// through stdout.
 							disposable += stderrAggregated
-								|> then(stdoutAggregated)
-								|> map { data in .Success(data) }
-								|> start(observer)
+								.then(stdoutAggregated)
+								.map { data in .Success(data) }
+								.start(observer)
 						} else {
 							// Wait for stdout to finish, then pass
 							// through stderr.
 							disposable += stdoutAggregated
-								|> then(stderrAggregated)
-								|> flatMap(.Concat) { data in
+								.then(stderrAggregated)
+								.flatMap(.Concat) { data in
 									let errorString = (data.length > 0 ? String(UTF8String: UnsafePointer<CChar>(data.bytes)) : nil)
 									return SignalProducer(error: .ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 								}
-								|> start(observer)
+								.start(observer)
 						}
 						dispatch_group_leave(group)
 					}
@@ -500,7 +500,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 					}
 				}
 			}
-			|> startWithSignal { signal, taskDisposable in
+			.startWithSignal { signal, taskDisposable in
 				disposable.addDisposable(taskDisposable)
 				signal.observe(observer)
 			}
