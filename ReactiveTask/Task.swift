@@ -265,7 +265,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 }
 
 public protocol TaskEventType {
-	/// The type of values being sent on the signal.
+	/// The type of value embedded in a `Success` event.
 	typealias T
 
 	/// The resulting value, if the event is `Success`.
@@ -367,7 +367,6 @@ extension TaskEvent: CustomStringConvertible {
 }
 
 extension SignalProducer where T: TaskEventType {
-	
 	/// Maps the values inside a stream of TaskEvents into new SignalProducers.
 	public func flatMapTaskEvents<U>(strategy: FlattenStrategy, transform: T.T -> SignalProducer<U, E>) -> SignalProducer<TaskEvent<U>, E> {
 		return self.flatMap(strategy) { taskEvent in
@@ -375,6 +374,8 @@ extension SignalProducer where T: TaskEventType {
 		}
 	}
 	
+	/// Ignores incremental standard output and standard error data from the given
+	/// task, sending only a single value with the final, aggregated result.
 	public func ignoreTaskData() -> SignalProducer<T.T, E> {
 		return lift { $0.ignoreTaskData() }
 	}
