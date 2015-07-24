@@ -101,9 +101,9 @@ private final class Pipe {
 	class func create(queue: dispatch_queue_t, _ group: dispatch_group_t) -> Result<Pipe, ReactiveTaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
-			return .success(self.init(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
+			return .Success(self.init(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
 		} else {
-			return .failure(.POSIXError(errno))
+			return .Failure(.POSIXError(errno))
 		}
 	}
 
@@ -264,9 +264,23 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 	}
 }
 
+public protocol TaskEventType {
+	/// The type of values being sent on the signal.
+	typealias T
+
+	/// The resulting value, if the event is `Success`.
+	var value: T? { get }
+	
+	/// Maps over the value embedded in a `Success` event.
+	func map<U>(@noescape transform: T -> U) -> TaskEvent<U>
+	
+	/// Convenience operator for mapping TaskEvents to SignalProducers.
+	func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error>
+}
+
 /// Represents events that can occur during the execution of a task that is
 /// expected to terminate with a result of type T (upon success).
-public enum TaskEvent<T> {
+public enum TaskEvent<T>: TaskEventType {
 	/// Some data arrived from the task on `stdout`.
 	case StandardOutput(NSData)
 
@@ -352,23 +366,33 @@ extension TaskEvent: CustomStringConvertible {
 	}
 }
 
-/// Maps the values inside a stream of TaskEvents into new SignalProducers.
-public func flatMapTaskEvents<T, U, Error>(strategy: FlattenStrategy, transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<T>, Error> -> SignalProducer<TaskEvent<U>, Error> {
-	return { producer in
-		return producer.flatMap(strategy) { taskEvent in
+extension SignalProducer where T: TaskEventType {
+	
+	/// Maps the values inside a stream of TaskEvents into new SignalProducers.
+	public func flatMapTaskEvents<U>(strategy: FlattenStrategy, transform: T.T -> SignalProducer<U, E>) -> SignalProducer<TaskEvent<U>, E> {
+		return self.flatMap(strategy) { taskEvent in
 			return taskEvent.producerMap(transform)
 		}
 	}
+	
+	public func ignoreTaskData() -> SignalProducer<T.T, E> {
+		return lift { $0.ignoreTaskData() }
+	}
+
+	
 }
 
-/// Ignores incremental standard output and standard error data from the given
-/// task, sending only a single value with the final, aggregated result.
-public func ignoreTaskData<T, Error>(signal: Signal<TaskEvent<T>, Error>) -> Signal<T, Error> {
-	return signal
-		.map { event in
-			return event.value.map { $0 }
-		}
-		.ignoreNil()
+extension Signal where T: TaskEventType {
+	/// Ignores incremental standard output and standard error data from the given
+	/// task, sending only a single value with the final, aggregated result.
+	public func ignoreTaskData() -> Signal<T.T, E> {
+		return self
+			.map { event in
+				return event.value
+			}
+			.ignoreNil()
+	}
+	
 }
 
 /// Launches a new shell task, using the parameters from `taskDescription`.

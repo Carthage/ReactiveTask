@@ -17,7 +17,7 @@ class TaskSpec: QuickSpec {
 	override func spec() {
 		it("should launch a task that writes to stdout") {
 			let result = launchTask(TaskDescription(launchPath: "/bin/echo", arguments: [ "foobar" ]))
-				|> reduce(NSMutableData()) { aggregated, event in
+				.reduce(NSMutableData()) { aggregated, event in
 					switch event {
 					case let .StandardOutput(data):
 						aggregated.appendData(data)
@@ -28,7 +28,7 @@ class TaskSpec: QuickSpec {
 
 					return aggregated
 				}
-				|> single
+				.single()
 
 			expect(result).notTo(beNil())
 			if let data = result?.value {
@@ -38,7 +38,7 @@ class TaskSpec: QuickSpec {
 
 		it("should launch a task that writes to stderr") {
 			let result = launchTask(TaskDescription(launchPath: "/usr/bin/stat", arguments: [ "not-a-real-file" ]))
-				|> reduce(NSMutableData()) { aggregated, event in
+				.reduce(NSMutableData()) { aggregated, event in
 					switch event {
 					case let .StandardError(data):
 						aggregated.appendData(data)
@@ -49,7 +49,7 @@ class TaskSpec: QuickSpec {
 
 					return aggregated
 				}
-				|> single
+				.single()
 
 			expect(result).notTo(beNil())
 			if let data = result?.value {
@@ -62,9 +62,9 @@ class TaskSpec: QuickSpec {
 			let data = strings.map { $0.dataUsingEncoding(NSUTF8StringEncoding)! }
 
 			let result = launchTask(TaskDescription(launchPath: "/usr/bin/sort", standardInput: SignalProducer(values: data)))
-				|> map { event in event.value }
-				|> ignoreNil
-				|> single
+				.map { event in event.value }
+				.ignoreNil()
+				.single()
 
 			expect(result).notTo(beNil())
 			if let data = result?.value {
