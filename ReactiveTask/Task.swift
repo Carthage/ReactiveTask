@@ -480,7 +480,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 							disposable += stdoutAggregated
 								|> then(stderrAggregated)
 								|> flatMap(.Concat) { data in
-									let errorString = (data.length > 0 ? String(UTF8String: UnsafePointer<CChar>(data.bytes)) : nil)
+									let errorString = (data.length > 0 ? NSString(data: data, encoding: NSUTF8StringEncoding) as? String : nil)
 									return SignalProducer(error: .ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 								}
 								|> start(observer)
