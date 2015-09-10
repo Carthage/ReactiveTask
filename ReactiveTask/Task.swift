@@ -184,21 +184,26 @@ private final class Pipe {
 			producer.startWithSignal { signal, producerDisposable in
 				disposable.addDisposable(producerDisposable)
 
-				signal.observe(next: { data in
-					let dispatchData = dispatch_data_create(data.bytes, data.length, self.queue, nil)
-
-					dispatch_io_write(channel, 0, dispatchData, self.queue) { (done, data, error) in
-						if error == ECANCELED {
-							sendInterrupted(observer)
-						} else if error != 0 {
-							sendError(observer, .POSIXError(error))
+				signal.observe {
+					switch $0 {
+					case let .Next(data):
+						let dispatchData = dispatch_data_create(data.bytes, data.length, self.queue, nil)
+						
+						dispatch_io_write(channel, 0, dispatchData, self.queue) { (done, data, error) in
+							if error == ECANCELED {
+								sendInterrupted(observer)
+							} else if error != 0 {
+								sendError(observer, .POSIXError(error))
+							}
 						}
+					case .Completed:
+						dispatch_io_close(channel, 0)
+					case .Interrupted:
+						sendInterrupted(observer)
+					default:
+						break
 					}
-				}, completed: {
-					dispatch_io_close(channel, 0)
-				}, interrupted: {
-					sendInterrupted(observer)
-				})
+				}
 			}
 
 			disposable.addDisposable {
@@ -244,22 +249,25 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 		readProducer.startWithSignal { signal, signalDisposable in
 			disposable.addDisposable(signalDisposable)
 
-			signal.observe(next: { data in
-				sendNext(observer, .chunk(data))
+			signal.observe {
+				switch $0 {
+				case let .Next(data):
+					sendNext(observer, .chunk(data))
 
-				if let existingBuffer = buffer {
-					buffer = dispatch_data_create_concat(existingBuffer, data)
-				} else {
-					buffer = data
+					if let existingBuffer = buffer {
+						buffer = dispatch_data_create_concat(existingBuffer, data)
+					} else {
+						buffer = data
+					}
+				case let .Error(error):
+					sendError(observer, error)
+				case .Completed:
+					sendNext(observer, .aggregated(buffer))
+					sendCompleted(observer)
+				case .Interrupted:
+					sendInterrupted(observer)
 				}
-			}, error: { error in
-				sendError(observer, error)
-			}, completed: {
-				sendNext(observer, .aggregated(buffer))
-				sendCompleted(observer)
-			}, interrupted: {
-				sendInterrupted(observer)
-			})
+			}
 		}
 	}
 }
@@ -446,43 +454,49 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 					stdoutProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
 
-						signal.observe(next: { readData in
-							switch readData {
-							case let .Chunk(data):
-								sendNext(observer, .StandardOutput(data))
+						signal.observe {
+							switch $0 {
+							case let .Next(readData):
+								switch readData {
+								case let .Chunk(data):
+									sendNext(observer, .StandardOutput(data))
 
-							case let .Aggregated(data):
-								sendNext(stdoutAggregatedSink, data)
+								case let .Aggregated(data):
+									sendNext(stdoutAggregatedSink, data)
+								}
+							case let .Error(error):
+								sendError(observer, error)
+								sendError(stdoutAggregatedSink, error)
+							case .Completed:
+								sendCompleted(stdoutAggregatedSink)
+							case .Interrupted:
+								sendInterrupted(stdoutAggregatedSink)
 							}
-						}, error: { error in
-							sendError(observer, error)
-							sendError(stdoutAggregatedSink, error)
-						}, completed: {
-							sendCompleted(stdoutAggregatedSink)
-						}, interrupted: {
-							sendInterrupted(stdoutAggregatedSink)
-						})
+						}
 					}
 
 					stderrProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
 
-						signal.observe(next: { readData in
-							switch readData {
-							case let .Chunk(data):
-								sendNext(observer, .StandardError(data))
+						signal.observe {
+							switch $0 {
+							case let .Next(readData):
+								switch readData {
+								case let .Chunk(data):
+									sendNext(observer, .StandardError(data))
 
-							case let .Aggregated(data):
-								sendNext(stderrAggregatedSink, data)
+								case let .Aggregated(data):
+									sendNext(stderrAggregatedSink, data)
+								}
+							case let .Error(error):
+								sendError(observer, error)
+								sendError(stderrAggregatedSink, error)
+							case .Completed:
+								sendCompleted(stderrAggregatedSink)
+							case .Interrupted:
+								sendInterrupted(stderrAggregatedSink)
 							}
-						}, error: { error in
-							sendError(observer, error)
-							sendError(stderrAggregatedSink, error)
-						}, completed: {
-							sendCompleted(stderrAggregatedSink)
-						}, interrupted: {
-							sendInterrupted(stderrAggregatedSink)
-						})
+						}
 					}
 
 					task.standardOutput = stdoutPipe.writeHandle
