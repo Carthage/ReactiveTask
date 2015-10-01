@@ -10,32 +10,12 @@ import Foundation
 import ReactiveCocoa
 
 /// An error originating from ReactiveTask.
-public enum ReactiveTaskError {
+public enum ReactiveTaskError: ErrorType {
 	/// A shell task exited unsuccessfully.
 	case ShellTaskFailed(exitCode: Int32, standardError: String?)
 
 	/// An error was returned from a POSIX API.
 	case POSIXError(Int32)
-}
-
-extension ReactiveTaskError: ErrorType {
-	public var _domain: String {
-		switch self {
-		case .ShellTaskFailed:
-			return "org.carthage.ReactiveTask"
-		case POSIXError:
-			return NSPOSIXErrorDomain
-		}
-	}
-	
-	public var _code: Int {
-		switch self {
-		case .ShellTaskFailed:
-			return 0
-		case let POSIXError(code):
-			return Int(code)
-		}
-	}
 }
 
 extension ReactiveTaskError: CustomStringConvertible {
