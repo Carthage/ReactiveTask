@@ -239,7 +239,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
-		var buffer: dispatch_data_t?
+		var buffer: dispatch_data_t? = nil
 
 		readProducer.startWithSignal { signal, signalDisposable in
 			disposable.addDisposable(signalDisposable)
