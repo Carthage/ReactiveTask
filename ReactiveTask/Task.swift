@@ -270,10 +270,10 @@ public protocol TaskEventType {
 
 	/// The resulting value, if the event is `Success`.
 	var value: T? { get }
-	
+
 	/// Maps over the value embedded in a `Success` event.
 	func map<U>(@noescape transform: T -> U) -> TaskEvent<U>
-	
+
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
 	func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error>
 }
@@ -379,8 +379,6 @@ extension SignalProducer where T: TaskEventType {
 	public func ignoreTaskData() -> SignalProducer<T.T, E> {
 		return lift { $0.ignoreTaskData() }
 	}
-
-	
 }
 
 extension Signal where T: TaskEventType {
@@ -393,7 +391,6 @@ extension Signal where T: TaskEventType {
 			}
 			.ignoreNil()
 	}
-	
 }
 
 /// Launches a new shell task, using the parameters from `taskDescription`.
