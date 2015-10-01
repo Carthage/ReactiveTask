@@ -30,7 +30,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		D021308D1AF87B4600B9EC20 /* Box.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Box.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D02130911AF87B6500B9EC20 /* Result.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Result.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA581A2D1E5E00E23194 /* ReactiveTask.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ReactiveTask.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA5C1A2D1E5E00E23194 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -121,7 +120,6 @@
 		D0BFEA5B1A2D1E5E00E23194 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
-				D021308D1AF87B4600B9EC20 /* Box.framework */,
 				D02130911AF87B6500B9EC20 /* Result.framework */,
 				D0BFEA901A2D1F1A00E23194 /* ReactiveCocoa.framework */,
 				D0BFEA5C1A2D1E5E00E23194 /* Info.plist */,
