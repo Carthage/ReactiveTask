@@ -123,11 +123,11 @@ private final class Pipe {
 			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
 				if error == 0 {
-					sendCompleted(observer)
+					observer.sendCompleted()
 				} else if error == ECANCELED {
-					sendInterrupted(observer)
+					observer.sendInterrupted()
 				} else {
-					sendError(observer, .POSIXError(error))
+					observer.sendError(.POSIXError(error))
 				}
 
 				close(self.readFD)
@@ -137,13 +137,13 @@ private final class Pipe {
 			dispatch_io_set_low_water(channel, 1)
 			dispatch_io_read(channel, 0, Int.max, self.queue) { (done, data, error) in
 				if let data = data {
-					sendNext(observer, data)
+					observer.sendNext(data)
 				}
 
 				if error == ECANCELED {
-					sendInterrupted(observer)
+					observer.sendInterrupted()
 				} else if error != 0 {
-					sendError(observer, .POSIXError(error))
+					observer.sendError(.POSIXError(error))
 				}
 
 				if done {
@@ -170,11 +170,11 @@ private final class Pipe {
 			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, self.queue) { error in
 				if error == 0 {
-					sendCompleted(observer)
+					observer.sendCompleted()
 				} else if error == ECANCELED {
-					sendInterrupted(observer)
+					observer.sendInterrupted()
 				} else {
-					sendError(observer, .POSIXError(error))
+					observer.sendError(.POSIXError(error))
 				}
 
 				close(self.writeFD)
@@ -184,21 +184,21 @@ private final class Pipe {
 			producer.startWithSignal { signal, producerDisposable in
 				disposable.addDisposable(producerDisposable)
 
-				signal.observe(next: { data in
+				signal.observe(Observer(next: { data in
 					let dispatchData = dispatch_data_create(data.bytes, data.length, self.queue, nil)
 
 					dispatch_io_write(channel, 0, dispatchData, self.queue) { (done, data, error) in
 						if error == ECANCELED {
-							sendInterrupted(observer)
+							observer.sendInterrupted()
 						} else if error != 0 {
-							sendError(observer, .POSIXError(error))
+							observer.sendError(.POSIXError(error))
 						}
 					}
 				}, completed: {
 					dispatch_io_close(channel, 0)
 				}, interrupted: {
-					sendInterrupted(observer)
-				})
+					observer.sendInterrupted()
+				}))
 			}
 
 			disposable.addDisposable {
@@ -244,8 +244,8 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 		readProducer.startWithSignal { signal, signalDisposable in
 			disposable.addDisposable(signalDisposable)
 
-			signal.observe(next: { data in
-				sendNext(observer, .chunk(data))
+			signal.observe(Observer(next: { data in
+				observer.sendNext(.chunk(data))
 
 				if let existingBuffer = buffer {
 					buffer = dispatch_data_create_concat(existingBuffer, data)
@@ -253,13 +253,13 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 					buffer = data
 				}
 			}, error: { error in
-				sendError(observer, error)
+				observer.sendError(error)
 			}, completed: {
-				sendNext(observer, .aggregated(buffer))
-				sendCompleted(observer)
+				observer.sendNext(.aggregated(buffer))
+				observer.sendCompleted()
 			}, interrupted: {
-				sendInterrupted(observer)
-			})
+				observer.sendInterrupted()
+			}))
 		}
 	}
 }
@@ -366,9 +366,9 @@ extension TaskEvent: CustomStringConvertible {
 	}
 }
 
-extension SignalProducer where T: TaskEventType {
+extension SignalProducer where Value: TaskEventType {
 	/// Maps the values inside a stream of TaskEvents into new SignalProducers.
-	public func flatMapTaskEvents<U>(strategy: FlattenStrategy, transform: T.T -> SignalProducer<U, E>) -> SignalProducer<TaskEvent<U>, E> {
+	public func flatMapTaskEvents<U>(strategy: FlattenStrategy, transform: Value.T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		return self.flatMap(strategy) { taskEvent in
 			return taskEvent.producerMap(transform)
 		}
@@ -376,15 +376,15 @@ extension SignalProducer where T: TaskEventType {
 	
 	/// Ignores incremental standard output and standard error data from the given
 	/// task, sending only a single value with the final, aggregated result.
-	public func ignoreTaskData() -> SignalProducer<T.T, E> {
+	public func ignoreTaskData() -> SignalProducer<Value.T, Error> {
 		return lift { $0.ignoreTaskData() }
 	}
 }
 
-extension Signal where T: TaskEventType {
+extension Signal where Value: TaskEventType {
 	/// Ignores incremental standard output and standard error data from the given
 	/// task, sending only a single value with the final, aggregated result.
-	public func ignoreTaskData() -> Signal<T.T, E> {
+	public func ignoreTaskData() -> Signal<Value.T, Error> {
 		return self
 			.map { event in
 				return event.value
@@ -426,7 +426,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 				})
 
 			case let .Failure(error):
-				sendError(observer, error)
+				observer.sendError(error)
 				return
 			}
 		}
@@ -437,49 +437,49 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 				let stderrProducer = aggregateDataReadFromPipe(stderrPipe)
 
 				return SignalProducer { observer, disposable in
-					let (stdoutAggregated, stdoutAggregatedSink) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
-					let (stderrAggregated, stderrAggregatedSink) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
+					let (stdoutAggregated, stdoutAggregatedObserver) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
+					let (stderrAggregated, stderrAggregatedObserver) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
 
 					stdoutProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
 
-						signal.observe(next: { readData in
+						signal.observe(Observer(next: { readData in
 							switch readData {
 							case let .Chunk(data):
-								sendNext(observer, .StandardOutput(data))
+								observer.sendNext(.StandardOutput(data))
 
 							case let .Aggregated(data):
-								sendNext(stdoutAggregatedSink, data)
+								stdoutAggregatedObserver.sendNext(data)
 							}
 						}, error: { error in
-							sendError(observer, error)
-							sendError(stdoutAggregatedSink, error)
+							observer.sendError(error)
+							stdoutAggregatedObserver.sendError(error)
 						}, completed: {
-							sendCompleted(stdoutAggregatedSink)
+							stdoutAggregatedObserver.sendCompleted()
 						}, interrupted: {
-							sendInterrupted(stdoutAggregatedSink)
-						})
+							stdoutAggregatedObserver.sendInterrupted()
+						}))
 					}
 
 					stderrProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
 
-						signal.observe(next: { readData in
+						signal.observe(Observer(next: { readData in
 							switch readData {
 							case let .Chunk(data):
-								sendNext(observer, .StandardError(data))
+								observer.sendNext(.StandardError(data))
 
 							case let .Aggregated(data):
-								sendNext(stderrAggregatedSink, data)
+								stderrAggregatedObserver.sendNext(data)
 							}
 						}, error: { error in
-							sendError(observer, error)
-							sendError(stderrAggregatedSink, error)
+							observer.sendError(error)
+							stderrAggregatedObserver.sendError(error)
 						}, completed: {
-							sendCompleted(stderrAggregatedSink)
+							stderrAggregatedObserver.sendCompleted()
 						}, interrupted: {
-							sendInterrupted(stderrAggregatedSink)
-						})
+							stderrAggregatedObserver.sendInterrupted()
+						}))
 					}
 
 					task.standardOutput = stdoutPipe.writeHandle
@@ -500,7 +500,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 							// through stderr.
 							disposable += stdoutAggregated
 								.then(stderrAggregated)
-								.flatMap(.Concat) { data in
+								.flatMap(.Concat) { data -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> in
 									let errorString = (data.length > 0 ? NSString(data: data, encoding: NSUTF8StringEncoding) as? String : nil)
 									return SignalProducer(error: .ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 								}
