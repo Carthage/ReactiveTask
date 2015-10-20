@@ -1,15 +1,15 @@
-[submodule "Carthage.checkout/Nimble"]
+[submodule "Carthage/Checkouts/Nimble"]
 	path = Carthage/Checkouts/Nimble
 	url = https://github.com/Quick/Nimble.git
-[submodule "Carthage.checkout/Quick"]
+[submodule "Carthage/Checkouts/Quick"]
 	path = Carthage/Checkouts/Quick
 	url = https://github.com/Quick/Quick.git
-[submodule "Carthage.checkout/xcconfigs"]
-	path = Carthage/Checkouts/xcconfigs
-	url = https://github.com/jspahrsummers/xcconfigs.git
-[submodule "Carthage.checkout/ReactiveCocoa"]
-	path = Carthage/Checkouts/ReactiveCocoa
-	url = https://github.com/ReactiveCocoa/ReactiveCocoa.git
 [submodule "Carthage/Checkouts/Result"]
 	path = Carthage/Checkouts/Result
 	url = https://github.com/antitypical/Result.git
+[submodule "Carthage/Checkouts/xcconfigs"]
+	path = Carthage/Checkouts/xcconfigs
+	url = https://github.com/jspahrsummers/xcconfigs.git
+[submodule "Carthage/Checkouts/ReactiveCocoa"]
+	path = Carthage/Checkouts/ReactiveCocoa
+	url = https://github.com/ReactiveCocoa/ReactiveCocoa.git
