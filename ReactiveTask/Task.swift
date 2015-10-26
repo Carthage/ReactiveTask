@@ -127,7 +127,7 @@ private final class Pipe {
 				} else if error == ECANCELED {
 					observer.sendInterrupted()
 				} else {
-					observer.sendError(.POSIXError(error))
+					observer.sendFailed(.POSIXError(error))
 				}
 
 				close(self.readFD)
@@ -143,7 +143,7 @@ private final class Pipe {
 				if error == ECANCELED {
 					observer.sendInterrupted()
 				} else if error != 0 {
-					observer.sendError(.POSIXError(error))
+					observer.sendFailed(.POSIXError(error))
 				}
 
 				if done {
@@ -174,7 +174,7 @@ private final class Pipe {
 				} else if error == ECANCELED {
 					observer.sendInterrupted()
 				} else {
-					observer.sendError(.POSIXError(error))
+					observer.sendFailed(.POSIXError(error))
 				}
 
 				close(self.writeFD)
@@ -191,7 +191,7 @@ private final class Pipe {
 						if error == ECANCELED {
 							observer.sendInterrupted()
 						} else if error != 0 {
-							observer.sendError(.POSIXError(error))
+							observer.sendFailed(.POSIXError(error))
 						}
 					}
 				}, completed: {
@@ -252,8 +252,8 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 				} else {
 					buffer = data
 				}
-			}, error: { error in
-				observer.sendError(error)
+			}, failed: { error in
+				observer.sendFailed(error)
 			}, completed: {
 				observer.sendNext(.aggregated(buffer))
 				observer.sendCompleted()
@@ -426,7 +426,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 				})
 
 			case let .Failure(error):
-				observer.sendError(error)
+				observer.sendFailed(error)
 				return
 			}
 		}
@@ -451,9 +451,9 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 							case let .Aggregated(data):
 								stdoutAggregatedObserver.sendNext(data)
 							}
-						}, error: { error in
-							observer.sendError(error)
-							stdoutAggregatedObserver.sendError(error)
+						}, failed: { error in
+							observer.sendFailed(error)
+							stdoutAggregatedObserver.sendFailed(error)
 						}, completed: {
 							stdoutAggregatedObserver.sendCompleted()
 						}, interrupted: {
@@ -472,9 +472,9 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 							case let .Aggregated(data):
 								stderrAggregatedObserver.sendNext(data)
 							}
-						}, error: { error in
-							observer.sendError(error)
-							stderrAggregatedObserver.sendError(error)
+						}, failed: { error in
+							observer.sendFailed(error)
+							stderrAggregatedObserver.sendFailed(error)
 						}, completed: {
 							stderrAggregatedObserver.sendCompleted()
 						}, interrupted: {
