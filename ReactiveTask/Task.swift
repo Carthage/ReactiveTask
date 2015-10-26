@@ -252,14 +252,12 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, R
 				} else {
 					buffer = data
 				}
-			}, failed: { error in
-				observer.sendFailed(error)
-			}, completed: {
+			}, failed: observer.sendFailed
+			, completed: {
 				observer.sendNext(.aggregated(buffer))
 				observer.sendCompleted()
-			}, interrupted: {
-				observer.sendInterrupted()
-			}))
+			}, interrupted: observer.sendInterrupted
+			))
 		}
 	}
 }
@@ -454,11 +452,9 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 						}, failed: { error in
 							observer.sendFailed(error)
 							stdoutAggregatedObserver.sendFailed(error)
-						}, completed: {
-							stdoutAggregatedObserver.sendCompleted()
-						}, interrupted: {
-							stdoutAggregatedObserver.sendInterrupted()
-						}))
+						}, completed: stdoutAggregatedObserver.sendCompleted
+						, interrupted: stdoutAggregatedObserver.sendInterrupted
+						))
 					}
 
 					stderrProducer.startWithSignal { signal, signalDisposable in
@@ -475,11 +471,9 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 						}, failed: { error in
 							observer.sendFailed(error)
 							stderrAggregatedObserver.sendFailed(error)
-						}, completed: {
-							stderrAggregatedObserver.sendCompleted()
-						}, interrupted: {
-							stderrAggregatedObserver.sendInterrupted()
-						}))
+						}, completed: stderrAggregatedObserver.sendCompleted
+						, interrupted: stderrAggregatedObserver.sendInterrupted
+						))
 					}
 
 					task.standardOutput = stdoutPipe.writeHandle
