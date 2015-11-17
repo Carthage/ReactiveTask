@@ -11,7 +11,7 @@ import ReactiveCocoa
 import Result
 
 /// Describes how to execute a shell command.
-public struct TaskDescription {
+public struct Task {
 	/// The path to the executable that should be launched.
 	public var launchPath: String
 
@@ -48,11 +48,11 @@ public struct TaskDescription {
 	
 	/// wait for all task termination
 	public static func waitForAllTaskTermination() {
-		dispatch_group_wait(TaskDescription.group, DISPATCH_TIME_FOREVER)
+		dispatch_group_wait(Task.group, DISPATCH_TIME_FOREVER)
 	}
 }
 
-extension TaskDescription: CustomStringConvertible {
+extension Task: CustomStringConvertible {
 	public var description: String {
 		return arguments.reduce(launchPath) { str, arg in
 			return str + " \(arg)"
@@ -395,10 +395,10 @@ extension Signal where Value: TaskEventType {
 ///
 /// Returns a producer that will launch the task when started, then send
 /// `TaskEvent`s as execution proceeds.
-public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> {
+public func launchTask(taskDescription: Task) -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> {
 	return SignalProducer { observer, disposable in
 		let queue = dispatch_queue_create(taskDescription.description, DISPATCH_QUEUE_SERIAL)
-		let group = TaskDescription.group
+		let group = Task.group
 
 		let task = NSTask()
 		task.launchPath = taskDescription.launchPath
