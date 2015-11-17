@@ -54,9 +54,7 @@ public struct Task {
 
 extension Task: CustomStringConvertible {
 	public var description: String {
-		return arguments.reduce(launchPath) { str, arg in
-			return str + " \(arg)"
-		}
+		return "\(launchPath) \(arguments.joinWithSeparator(" "))"
 	}
 }
 
