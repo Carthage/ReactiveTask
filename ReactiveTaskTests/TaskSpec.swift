@@ -16,7 +16,7 @@ import Result
 class TaskSpec: QuickSpec {
 	override func spec() {
 		it("should launch a task that writes to stdout") {
-			let result = launchTask(Task(launchPath: "/bin/echo", arguments: [ "foobar" ]))
+			let result = launchTask(Task("/bin/echo", arguments: [ "foobar" ]))
 				.reduce(NSMutableData()) { aggregated, event in
 					switch event {
 					case let .StandardOutput(data):
@@ -37,7 +37,7 @@ class TaskSpec: QuickSpec {
 		}
 
 		it("should launch a task that writes to stderr") {
-			let result = launchTask(Task(launchPath: "/usr/bin/stat", arguments: [ "not-a-real-file" ]))
+			let result = launchTask(Task("/usr/bin/stat", arguments: [ "not-a-real-file" ]))
 				.reduce(NSMutableData()) { aggregated, event in
 					switch event {
 					case let .StandardError(data):
@@ -61,7 +61,7 @@ class TaskSpec: QuickSpec {
 			let strings = [ "foo\n", "bar\n", "buzz\n", "fuzz\n" ]
 			let data = strings.map { $0.dataUsingEncoding(NSUTF8StringEncoding)! }
 
-			let result = launchTask(Task(launchPath: "/usr/bin/sort", standardInput: SignalProducer(values: data)))
+			let result = launchTask(Task("/usr/bin/sort", standardInput: SignalProducer(values: data)))
 				.map { event in event.value }
 				.ignoreNil()
 				.single()

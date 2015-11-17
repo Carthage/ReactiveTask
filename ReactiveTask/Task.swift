@@ -35,7 +35,7 @@ public struct Task {
 	/// If nil, stdin will be inherited from the parent process.
 	public var standardInput: SignalProducer<NSData, NoError>?
 
-	public init(launchPath: String, arguments: [String] = [], workingDirectoryPath: String? = nil, environment: [String: String]? = nil, standardInput: SignalProducer<NSData, NoError>? = nil) {
+	public init(_ launchPath: String, arguments: [String] = [], workingDirectoryPath: String? = nil, environment: [String: String]? = nil, standardInput: SignalProducer<NSData, NoError>? = nil) {
 		self.launchPath = launchPath
 		self.arguments = arguments
 		self.workingDirectoryPath = workingDirectoryPath
