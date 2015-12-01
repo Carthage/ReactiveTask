@@ -61,7 +61,7 @@ class TaskSpec: QuickSpec {
 			let strings = [ "foo\n", "bar\n", "buzz\n", "fuzz\n" ]
 			let data = strings.map { $0.dataUsingEncoding(NSUTF8StringEncoding)! }
 
-			let result = launchTask(Task("/usr/bin/sort", standardInput: SignalProducer(values: data)))
+			let result = launchTask(Task("/usr/bin/sort"), standardInput: SignalProducer(values: data))
 				.map { event in event.value }
 				.ignoreNil()
 				.single()

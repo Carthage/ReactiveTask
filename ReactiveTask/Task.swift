@@ -30,17 +30,11 @@ public struct Task {
 	/// If nil, the launched task will inherit the environment of its parent.
 	public var environment: [String: String]?
 
-	/// Data to stream to standard input of the launched process.
-	///
-	/// If nil, stdin will be inherited from the parent process.
-	public var standardInput: SignalProducer<NSData, NoError>?
-
-	public init(_ launchPath: String, arguments: [String] = [], workingDirectoryPath: String? = nil, environment: [String: String]? = nil, standardInput: SignalProducer<NSData, NoError>? = nil) {
+	public init(_ launchPath: String, arguments: [String] = [], workingDirectoryPath: String? = nil, environment: [String: String]? = nil) {
 		self.launchPath = launchPath
 		self.arguments = arguments
 		self.workingDirectoryPath = workingDirectoryPath
 		self.environment = environment
-		self.standardInput = standardInput
 	}
 	
 	/// A GCD group which to wait completion
@@ -389,11 +383,15 @@ extension Signal where Value: TaskEventType {
 	}
 }
 
-/// Launches a new shell task, using the parameters from `taskDescription`.
+/// Launches a new shell task.
+///
+/// taskDescription - The task to launch.
+/// standardInput   - Data to stream to standard input of the launched process. If nil, stdin will
+///                   be inherited from the parent process.
 ///
 /// Returns a producer that will launch the task when started, then send
 /// `TaskEvent`s as execution proceeds.
-public func launchTask(taskDescription: Task) -> SignalProducer<TaskEvent<NSData>, TaskError> {
+public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSData, NoError>? = nil) -> SignalProducer<TaskEvent<NSData>, TaskError> {
 	return SignalProducer { observer, disposable in
 		let queue = dispatch_queue_create(taskDescription.description, DISPATCH_QUEUE_SERIAL)
 		let group = Task.group
@@ -412,7 +410,7 @@ public func launchTask(taskDescription: Task) -> SignalProducer<TaskEvent<NSData
 
 		var stdinProducer: SignalProducer<(), TaskError> = .empty
 
-		if let input = taskDescription.standardInput {
+		if let input = standardInput {
 			switch Pipe.create(queue, group) {
 			case let .Success(pipe):
 				task.standardInput = pipe.readHandle
