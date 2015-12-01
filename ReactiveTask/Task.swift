@@ -52,6 +52,36 @@ extension Task: CustomStringConvertible {
 	}
 }
 
+extension Task: Hashable {
+	public var hashValue: Int {
+		var result = launchPath.hashValue ^ (workingDirectoryPath?.hashValue ?? 0)
+		for argument in arguments {
+			result ^= argument.hashValue
+		}
+		for (key, value) in environment ?? [:] {
+			result ^= key.hashValue ^ value.hashValue
+		}
+		return result
+	}
+}
+
+private func ==<Key : Equatable, Value : Equatable>(lhs: [Key : Value]?, rhs: [Key : Value]?) -> Bool {
+	switch (lhs, rhs) {
+	case let (.Some(lhs), .Some(rhs)):
+		return lhs == rhs
+		
+	case (.None, .None):
+		return true
+		
+	default:
+		return false
+	}
+}
+
+public func ==(lhs: Task, rhs: Task) -> Bool {
+	return lhs.launchPath == rhs.launchPath && lhs.arguments == rhs.arguments && lhs.workingDirectoryPath == rhs.workingDirectoryPath && lhs.environment == rhs.environment
+}
+
 /// A private class used to encapsulate a Unix pipe.
 private final class Pipe {
 	/// The file descriptor for reading data.
