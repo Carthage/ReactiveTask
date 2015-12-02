@@ -301,6 +301,9 @@ public protocol TaskEventType {
 /// Represents events that can occur during the execution of a task that is
 /// expected to terminate with a result of type T (upon success).
 public enum TaskEvent<T>: TaskEventType {
+	/// The task was launched.
+	case Launch(Task)
+	
 	/// Some data arrived from the task on `stdout`.
 	case StandardOutput(NSData)
 
@@ -314,7 +317,7 @@ public enum TaskEvent<T>: TaskEventType {
 	/// The resulting value, if the event is `Success`.
 	public var value: T? {
 		switch self {
-		case .StandardOutput, .StandardError:
+		case .Launch, .StandardOutput, .StandardError:
 			return nil
 
 		case let .Success(value):
@@ -325,6 +328,9 @@ public enum TaskEvent<T>: TaskEventType {
 	/// Maps over the value embedded in a `Success` event.
 	public func map<U>(@noescape transform: T -> U) -> TaskEvent<U> {
 		switch self {
+		case let .Launch(task):
+			return .Launch(task)
+
 		case let .StandardOutput(data):
 			return .StandardOutput(data)
 
@@ -339,6 +345,9 @@ public enum TaskEvent<T>: TaskEventType {
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
 	public func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		switch self {
+		case let .Launch(task):
+			return SignalProducer<TaskEvent<U>, Error>(value: .Launch(task))
+			
 		case let .StandardOutput(data):
 			return SignalProducer<TaskEvent<U>, Error>(value: .StandardOutput(data))
 
@@ -353,6 +362,9 @@ public enum TaskEvent<T>: TaskEventType {
 
 public func == <T: Equatable>(lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
 	switch (lhs, rhs) {
+	case let (.Launch(left), .Launch(right)):
+		return left == right
+	
 	case let (.StandardOutput(left), .StandardOutput(right)):
 		return left == right
 	
@@ -374,6 +386,9 @@ extension TaskEvent: CustomStringConvertible {
 		}
 
 		switch self {
+		case let .Launch(task):
+			return "launch: \(task)"
+			
 		case let .StandardOutput(data):
 			return "stdout: " + dataDescription(data)
 
