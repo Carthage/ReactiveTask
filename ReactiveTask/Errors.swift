@@ -10,7 +10,7 @@ import Foundation
 import ReactiveCocoa
 
 /// An error originating from ReactiveTask.
-public enum ReactiveTaskError: ErrorType {
+public enum TaskError: ErrorType {
 	/// A shell task exited unsuccessfully.
 	case ShellTaskFailed(exitCode: Int32, standardError: String?)
 
@@ -18,7 +18,7 @@ public enum ReactiveTaskError: ErrorType {
 	case POSIXError(Int32)
 }
 
-extension ReactiveTaskError: CustomStringConvertible {
+extension TaskError: CustomStringConvertible {
 	public var description: String {
 		switch self {
 		case let .ShellTaskFailed(exitCode, standardError):

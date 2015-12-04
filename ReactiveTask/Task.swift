@@ -11,7 +11,7 @@ import ReactiveCocoa
 import Result
 
 /// Describes how to execute a shell command.
-public struct TaskDescription {
+public struct Task {
 	/// The path to the executable that should be launched.
 	public var launchPath: String
 
@@ -30,17 +30,11 @@ public struct TaskDescription {
 	/// If nil, the launched task will inherit the environment of its parent.
 	public var environment: [String: String]?
 
-	/// Data to stream to standard input of the launched process.
-	///
-	/// If nil, stdin will be inherited from the parent process.
-	public var standardInput: SignalProducer<NSData, NoError>?
-
-	public init(launchPath: String, arguments: [String] = [], workingDirectoryPath: String? = nil, environment: [String: String]? = nil, standardInput: SignalProducer<NSData, NoError>? = nil) {
+	public init(_ launchPath: String, arguments: [String] = [], workingDirectoryPath: String? = nil, environment: [String: String]? = nil) {
 		self.launchPath = launchPath
 		self.arguments = arguments
 		self.workingDirectoryPath = workingDirectoryPath
 		self.environment = environment
-		self.standardInput = standardInput
 	}
 	
 	/// A GCD group which to wait completion
@@ -48,16 +42,44 @@ public struct TaskDescription {
 	
 	/// wait for all task termination
 	public static func waitForAllTaskTermination() {
-		dispatch_group_wait(TaskDescription.group, DISPATCH_TIME_FOREVER)
+		dispatch_group_wait(Task.group, DISPATCH_TIME_FOREVER)
 	}
 }
 
-extension TaskDescription: CustomStringConvertible {
+extension Task: CustomStringConvertible {
 	public var description: String {
-		return arguments.reduce(launchPath) { str, arg in
-			return str + " \(arg)"
-		}
+		return "\(launchPath) \(arguments.joinWithSeparator(" "))"
 	}
+}
+
+extension Task: Hashable {
+	public var hashValue: Int {
+		var result = launchPath.hashValue ^ (workingDirectoryPath?.hashValue ?? 0)
+		for argument in arguments {
+			result ^= argument.hashValue
+		}
+		for (key, value) in environment ?? [:] {
+			result ^= key.hashValue ^ value.hashValue
+		}
+		return result
+	}
+}
+
+private func ==<Key: Equatable, Value: Equatable>(lhs: [Key: Value]?, rhs: [Key: Value]?) -> Bool {
+	switch (lhs, rhs) {
+	case let (lhs?, rhs?):
+		return lhs == rhs
+		
+	case (.None, .None):
+		return true
+		
+	default:
+		return false
+	}
+}
+
+public func ==(lhs: Task, rhs: Task) -> Bool {
+	return lhs.launchPath == rhs.launchPath && lhs.arguments == rhs.arguments && lhs.workingDirectoryPath == rhs.workingDirectoryPath && lhs.environment == rhs.environment
 }
 
 /// A private class used to encapsulate a Unix pipe.
@@ -98,7 +120,7 @@ private final class Pipe {
 	}
 
 	/// Instantiates a new descriptor pair.
-	class func create(queue: dispatch_queue_t, _ group: dispatch_group_t) -> Result<Pipe, ReactiveTaskError> {
+	class func create(queue: dispatch_queue_t, _ group: dispatch_group_t) -> Result<Pipe, TaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
 			return .Success(self.init(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
@@ -118,7 +140,7 @@ private final class Pipe {
 	///
 	/// After starting the returned producer, `readFD` should not be used
 	/// anywhere else, as it may close unexpectedly.
-	func transferReadsToProducer() -> SignalProducer<dispatch_data_t, ReactiveTaskError> {
+	func transferReadsToProducer() -> SignalProducer<dispatch_data_t, TaskError> {
 		return SignalProducer { observer, disposable in
 			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
@@ -165,7 +187,7 @@ private final class Pipe {
 	/// anywhere else, as it may close unexpectedly.
 	///
 	/// Returns a producer that will complete or error.
-	func writeDataFromProducer(producer: SignalProducer<NSData, NoError>) -> SignalProducer<(), ReactiveTaskError> {
+	func writeDataFromProducer(producer: SignalProducer<NSData, NoError>) -> SignalProducer<(), TaskError> {
 		return SignalProducer { observer, disposable in
 			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, self.queue) { error in
@@ -235,7 +257,7 @@ private enum ReadData {
 
 /// Takes ownership of the read handle from the given pipe, then sends
 /// `ReadData` values for all data read.
-private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, ReactiveTaskError> {
+private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, TaskError> {
 	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
@@ -279,6 +301,9 @@ public protocol TaskEventType {
 /// Represents events that can occur during the execution of a task that is
 /// expected to terminate with a result of type T (upon success).
 public enum TaskEvent<T>: TaskEventType {
+	/// The task was launched.
+	case Launch(Task)
+	
 	/// Some data arrived from the task on `stdout`.
 	case StandardOutput(NSData)
 
@@ -292,7 +317,7 @@ public enum TaskEvent<T>: TaskEventType {
 	/// The resulting value, if the event is `Success`.
 	public var value: T? {
 		switch self {
-		case .StandardOutput, .StandardError:
+		case .Launch, .StandardOutput, .StandardError:
 			return nil
 
 		case let .Success(value):
@@ -303,6 +328,9 @@ public enum TaskEvent<T>: TaskEventType {
 	/// Maps over the value embedded in a `Success` event.
 	public func map<U>(@noescape transform: T -> U) -> TaskEvent<U> {
 		switch self {
+		case let .Launch(task):
+			return .Launch(task)
+
 		case let .StandardOutput(data):
 			return .StandardOutput(data)
 
@@ -317,6 +345,9 @@ public enum TaskEvent<T>: TaskEventType {
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
 	public func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		switch self {
+		case let .Launch(task):
+			return SignalProducer<TaskEvent<U>, Error>(value: .Launch(task))
+			
 		case let .StandardOutput(data):
 			return SignalProducer<TaskEvent<U>, Error>(value: .StandardOutput(data))
 
@@ -331,6 +362,9 @@ public enum TaskEvent<T>: TaskEventType {
 
 public func == <T: Equatable>(lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
 	switch (lhs, rhs) {
+	case let (.Launch(left), .Launch(right)):
+		return left == right
+	
 	case let (.StandardOutput(left), .StandardOutput(right)):
 		return left == right
 	
@@ -352,6 +386,9 @@ extension TaskEvent: CustomStringConvertible {
 		}
 
 		switch self {
+		case let .Launch(task):
+			return "launch: \(task)"
+			
 		case let .StandardOutput(data):
 			return "stdout: " + dataDescription(data)
 
@@ -391,14 +428,19 @@ extension Signal where Value: TaskEventType {
 	}
 }
 
-/// Launches a new shell task, using the parameters from `taskDescription`.
+/// Launches a new shell task.
 ///
-/// Returns a producer that will launch the task when started, then send
+/// - Parameters:
+///   - taskDescription: The task to launch.
+///   - standardInput:   Data to stream to standard input of the launched process. If nil, stdin will
+///                      be inherited from the parent process.
+///
+/// - Returns: A producer that will launch the task when started, then send
 /// `TaskEvent`s as execution proceeds.
-public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> {
+public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSData, NoError>? = nil) -> SignalProducer<TaskEvent<NSData>, TaskError> {
 	return SignalProducer { observer, disposable in
 		let queue = dispatch_queue_create(taskDescription.description, DISPATCH_QUEUE_SERIAL)
-		let group = TaskDescription.group
+		let group = Task.group
 
 		let task = NSTask()
 		task.launchPath = taskDescription.launchPath
@@ -412,9 +454,9 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 			task.environment = env
 		}
 
-		var stdinProducer: SignalProducer<(), ReactiveTaskError> = .empty
+		var stdinProducer: SignalProducer<(), TaskError> = .empty
 
-		if let input = taskDescription.standardInput {
+		if let input = standardInput {
 			switch Pipe.create(queue, group) {
 			case let .Success(pipe):
 				task.standardInput = pipe.readHandle
@@ -430,13 +472,13 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 		}
 
 		SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
-			.flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> in
+			.flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<NSData>, TaskError> in
 				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe)
 				let stderrProducer = aggregateDataReadFromPipe(stderrPipe)
 
 				return SignalProducer { observer, disposable in
-					let (stdoutAggregated, stdoutAggregatedObserver) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
-					let (stderrAggregated, stderrAggregatedObserver) = SignalProducer<NSData, ReactiveTaskError>.buffer(1)
+					let (stdoutAggregated, stdoutAggregatedObserver) = SignalProducer<NSData, TaskError>.buffer(1)
+					let (stderrAggregated, stderrAggregatedObserver) = SignalProducer<NSData, TaskError>.buffer(1)
 
 					stdoutProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
@@ -494,7 +536,7 @@ public func launchTask(taskDescription: TaskDescription) -> SignalProducer<TaskE
 							// through stderr.
 							disposable += stdoutAggregated
 								.then(stderrAggregated)
-								.flatMap(.Concat) { data -> SignalProducer<TaskEvent<NSData>, ReactiveTaskError> in
+								.flatMap(.Concat) { data -> SignalProducer<TaskEvent<NSData>, TaskError> in
 									let errorString = (data.length > 0 ? NSString(data: data, encoding: NSUTF8StringEncoding) as? String : nil)
 									return SignalProducer(error: .ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
 								}
