@@ -430,11 +430,12 @@ extension Signal where Value: TaskEventType {
 
 /// Launches a new shell task.
 ///
-/// taskDescription - The task to launch.
-/// standardInput   - Data to stream to standard input of the launched process. If nil, stdin will
-///                   be inherited from the parent process.
+/// - Parameters:
+///   - taskDescription: The task to launch.
+///   - standardInput:   Data to stream to standard input of the launched process. If nil, stdin will
+///                      be inherited from the parent process.
 ///
-/// Returns a producer that will launch the task when started, then send
+/// - Returns: A producer that will launch the task when started, then send
 /// `TaskEvent`s as execution proceeds.
 public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSData, NoError>? = nil) -> SignalProducer<TaskEvent<NSData>, TaskError> {
 	return SignalProducer { observer, disposable in
