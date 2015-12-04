@@ -7,3 +7,16 @@ notifications:
   email: false
   slack:
     secure: Nh1mbn1RzYrI5tIY52gNrMy+PX1hdq2rIAJHxJjeiWjQDYfIoynhQ/2NIKs6Y0b0E5GIQEtF1fereyWdxcoEFGloY3cq4HZ7dgqr9kzOHrlDMp80fWbcoTqrgbOsKreFFtrv413d5+YcNkJvkYRfnxbuWLPZPszrcbw82TyRL60=
+before_deploy:
+- brew install carthage
+- carthage build --no-skip-current
+- carthage archive ReactiveTask
+deploy:
+  provider: releases
+  api_key:
+    secure: HL8FyVudN7johEi0hFOVR58NSVB8lFpx4HLzeZZoCz7nabj3LtavDoPF7c72nOYdrV6bhQiLiF2ocsYlfTrAyX5whO3532Lih3mE9NRePRGMyqnVD+4CnJUXusPxbesHq4IkMfEsq40KiqXKBa4XsiHZPhrQhmE+u7I4YIzjOYo=
+  file: ReactiveTask.framework.zip
+  skip_cleanup: true
+  on:
+    repo: Carthage/ReactiveTask
+    tags: true
