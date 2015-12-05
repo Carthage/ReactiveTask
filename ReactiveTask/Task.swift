@@ -549,6 +549,8 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 					close(stdoutPipe.writeFD)
 					close(stderrPipe.writeFD)
 
+					observer.sendNext(.Launch(taskDescription))
+
 					stdinProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
 					}
