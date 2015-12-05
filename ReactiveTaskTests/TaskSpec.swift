@@ -19,7 +19,7 @@ class TaskSpec: QuickSpec {
 			var isLaunched: Bool = false
 
 			let task = Task("/usr/bin/true")
-			_ = launchTask(task)
+			let result = launchTask(task)
 				.on(next: { event in
 					if case let .Launch(launched) = event {
 						isLaunched = true
@@ -28,6 +28,7 @@ class TaskSpec: QuickSpec {
 				})
 				.wait()
 
+			expect(result.error).to(beNil())
 			expect(isLaunched) == true
 		}
 
