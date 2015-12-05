@@ -18,10 +18,12 @@ class TaskSpec: QuickSpec {
 		it("should notify that a task was launched") {
 			var isLaunched: Bool = false
 
-			_ = launchTask(Task("/usr/bin/true"))
+			let task = Task("/usr/bin/true")
+			_ = launchTask(task)
 				.on(next: { event in
-					if case .Launch = event {
+					if case let .Launch(launched) = event {
 						isLaunched = true
+						expect(launched) == task
 					}
 				})
 				.wait()
