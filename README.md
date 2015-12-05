@@ -32,7 +32,7 @@ launchTask(task, standardInput: input)
             print("stdout: \(data)")
 
         case let .Success(string):
-            print("value: \(string)")
+            print("value: \(string ?? "")")
         }
     }
 ```
