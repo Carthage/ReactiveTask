@@ -544,12 +544,11 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 						}
 						dispatch_group_leave(group)
 					}
-
+					
+					observer.sendNext(.Launch(task))
 					rawTask.launch()
 					close(stdoutPipe.writeFD)
 					close(stderrPipe.writeFD)
-
-					observer.sendNext(.Launch(task))
 
 					stdinProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
