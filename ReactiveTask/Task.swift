@@ -230,26 +230,6 @@ private final class Pipe {
 	}
 }
 
-/// Takes ownership of the read handle from the given pipe, then sends
-/// `NSData` values for all data read.
-private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<NSData, TaskError> {
-	let readProducer = pipe.transferReadsToProducer()
-
-	return SignalProducer { observer, disposable in
-		readProducer.startWithSignal { signal, signalDisposable in
-			disposable.addDisposable(signalDisposable)
-
-			signal.observe(Observer(next: { data in
-				observer.sendNext(data)
-			}, failed: observer.sendFailed
-			, completed: {
-				observer.sendCompleted()
-			}, interrupted: observer.sendInterrupted
-			))
-		}
-	}
-}
-
 public protocol TaskEventType {
 	/// The type of value embedded in a `Success` event.
 	typealias T
@@ -439,8 +419,8 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 
 		SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
 			.flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<NSData>, TaskError> in
-				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe)
-				let stderrProducer = aggregateDataReadFromPipe(stderrPipe)
+				let stdoutProducer = stdoutPipe.transferReadsToProducer()
+				let stderrProducer = stderrPipe.transferReadsToProducer()
 
 				return SignalProducer { observer, disposable in
 					let (stdoutAggregated, stdoutAggregatedObserver) = SignalProducer<NSData, TaskError>.buffer(1)
