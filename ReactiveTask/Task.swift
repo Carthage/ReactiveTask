@@ -140,7 +140,7 @@ private final class Pipe {
 	///
 	/// After starting the returned producer, `readFD` should not be used
 	/// anywhere else, as it may close unexpectedly.
-	func transferReadsToProducer() -> SignalProducer<dispatch_data_t, TaskError> {
+	func transferReadsToProducer() -> SignalProducer<NSData, TaskError> {
 		return SignalProducer { observer, disposable in
 			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
@@ -159,7 +159,7 @@ private final class Pipe {
 			dispatch_io_set_low_water(channel, 1)
 			dispatch_io_read(channel, 0, Int.max, self.queue) { (done, data, error) in
 				if let data = data {
-					observer.sendNext(data)
+					observer.sendNext(data as! NSData)
 				}
 
 				if error == ECANCELED {
@@ -239,20 +239,13 @@ private enum ReadData {
 	///
 	/// No further chunks will occur after this has been sent.
 	case Aggregated(NSData)
+}
 
-	/// Convenience constructor for a `Chunk` from `dispatch_data_t`.
-	static func chunk(data: dispatch_data_t) -> ReadData {
-		return .Chunk(data as! NSData)
-	}
-
-	/// Convenience constructor for an `Aggregated` from `dispatch_data_t`.
-	static func aggregated(data: dispatch_data_t?) -> ReadData {
-		if let data = data {
-			return .Aggregated(data as! NSData)
-		} else {
-			return .Aggregated(NSData())
-		}
-	}
+private func +(lhs: NSData, rhs: NSData) -> NSData {
+	let result = NSMutableData()
+	result.appendData(lhs)
+	result.appendData(rhs)
+	return result
 }
 
 /// Takes ownership of the read handle from the given pipe, then sends
@@ -261,22 +254,22 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, T
 	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
-		var buffer: dispatch_data_t? = nil
+		var buffer: NSData? = nil
 
 		readProducer.startWithSignal { signal, signalDisposable in
 			disposable.addDisposable(signalDisposable)
 
 			signal.observe(Observer(next: { data in
-				observer.sendNext(.chunk(data))
+				observer.sendNext(.Chunk(data))
 
 				if let existingBuffer = buffer {
-					buffer = dispatch_data_create_concat(existingBuffer, data)
+					buffer = existingBuffer + data
 				} else {
 					buffer = data
 				}
 			}, failed: observer.sendFailed
 			, completed: {
-				observer.sendNext(.aggregated(buffer))
+				observer.sendNext(.Aggregated(buffer ?? NSData()))
 				observer.sendCompleted()
 			}, interrupted: observer.sendInterrupted
 			))
