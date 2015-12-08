@@ -236,14 +236,11 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<NSData, Tas
 	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
-		let buffer = NSMutableData()
-
 		readProducer.startWithSignal { signal, signalDisposable in
 			disposable.addDisposable(signalDisposable)
 
 			signal.observe(Observer(next: { data in
 				observer.sendNext(data)
-				buffer.appendData(data)
 			}, failed: observer.sendFailed
 			, completed: {
 				observer.sendCompleted()
