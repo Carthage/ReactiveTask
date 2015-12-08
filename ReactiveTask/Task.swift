@@ -241,35 +241,23 @@ private enum ReadData {
 	case Aggregated(NSData)
 }
 
-private func +(lhs: NSData, rhs: NSData) -> NSData {
-	let result = NSMutableData()
-	result.appendData(lhs)
-	result.appendData(rhs)
-	return result
-}
-
 /// Takes ownership of the read handle from the given pipe, then sends
 /// `ReadData` values for all data read.
 private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, TaskError> {
 	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
-		var buffer: NSData? = nil
+		let buffer = NSMutableData()
 
 		readProducer.startWithSignal { signal, signalDisposable in
 			disposable.addDisposable(signalDisposable)
 
 			signal.observe(Observer(next: { data in
 				observer.sendNext(.Chunk(data))
-
-				if let existingBuffer = buffer {
-					buffer = existingBuffer + data
-				} else {
-					buffer = data
-				}
+				buffer.appendData(data)
 			}, failed: observer.sendFailed
 			, completed: {
-				observer.sendNext(.Aggregated(buffer ?? NSData()))
+				observer.sendNext(.Aggregated(buffer))
 				observer.sendCompleted()
 			}, interrupted: observer.sendInterrupted
 			))
