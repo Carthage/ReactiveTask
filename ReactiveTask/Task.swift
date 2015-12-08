@@ -234,11 +234,6 @@ private final class Pipe {
 private enum ReadData {
 	/// A chunk of data, sent as soon as it is received.
 	case Chunk(NSData)
-
-	/// The aggregate of all data sent so far, sent right before completion.
-	///
-	/// No further chunks will occur after this has been sent.
-	case Aggregated(NSData)
 }
 
 /// Takes ownership of the read handle from the given pipe, then sends
@@ -257,7 +252,6 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, T
 				buffer.appendData(data)
 			}, failed: observer.sendFailed
 			, completed: {
-				observer.sendNext(.Aggregated(buffer))
 				observer.sendCompleted()
 			}, interrupted: observer.sendInterrupted
 			))
@@ -464,38 +458,40 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 					stdoutProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
 
+						let aggregate = NSMutableData()
 						signal.observe(Observer(next: { readData in
 							switch readData {
 							case let .Chunk(data):
 								observer.sendNext(.StandardOutput(data))
-
-							case let .Aggregated(data):
-								stdoutAggregatedObserver.sendNext(data)
+								aggregate.appendData(data)
 							}
 						}, failed: { error in
 							observer.sendFailed(error)
 							stdoutAggregatedObserver.sendFailed(error)
-						}, completed: stdoutAggregatedObserver.sendCompleted
-						, interrupted: stdoutAggregatedObserver.sendInterrupted
+						}, completed: {
+							stdoutAggregatedObserver.sendNext(aggregate)
+							stdoutAggregatedObserver.sendCompleted()
+						}, interrupted: stdoutAggregatedObserver.sendInterrupted
 						))
 					}
 
 					stderrProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
 
+						let aggregate = NSMutableData()
 						signal.observe(Observer(next: { readData in
 							switch readData {
 							case let .Chunk(data):
 								observer.sendNext(.StandardError(data))
-
-							case let .Aggregated(data):
-								stderrAggregatedObserver.sendNext(data)
+								aggregate.appendData(data)
 							}
 						}, failed: { error in
 							observer.sendFailed(error)
 							stderrAggregatedObserver.sendFailed(error)
-						}, completed: stderrAggregatedObserver.sendCompleted
-						, interrupted: stderrAggregatedObserver.sendInterrupted
+						}, completed: {
+							stderrAggregatedObserver.sendNext(aggregate)
+							stderrAggregatedObserver.sendCompleted()
+						}, interrupted: stderrAggregatedObserver.sendInterrupted
 						))
 					}
 
