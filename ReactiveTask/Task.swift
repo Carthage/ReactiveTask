@@ -230,15 +230,9 @@ private final class Pipe {
 	}
 }
 
-/// Sent when reading from a pipe.
-private enum ReadData {
-	/// A chunk of data, sent as soon as it is received.
-	case Chunk(NSData)
-}
-
 /// Takes ownership of the read handle from the given pipe, then sends
-/// `ReadData` values for all data read.
-private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, TaskError> {
+/// `NSData` values for all data read.
+private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<NSData, TaskError> {
 	let readProducer = pipe.transferReadsToProducer()
 
 	return SignalProducer { observer, disposable in
@@ -248,7 +242,7 @@ private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, T
 			disposable.addDisposable(signalDisposable)
 
 			signal.observe(Observer(next: { data in
-				observer.sendNext(.Chunk(data))
+				observer.sendNext(data)
 				buffer.appendData(data)
 			}, failed: observer.sendFailed
 			, completed: {
@@ -459,12 +453,9 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 						disposable += signalDisposable
 
 						let aggregate = NSMutableData()
-						signal.observe(Observer(next: { readData in
-							switch readData {
-							case let .Chunk(data):
-								observer.sendNext(.StandardOutput(data))
-								aggregate.appendData(data)
-							}
+						signal.observe(Observer(next: { data in
+							observer.sendNext(.StandardOutput(data))
+							aggregate.appendData(data)
 						}, failed: { error in
 							observer.sendFailed(error)
 							stdoutAggregatedObserver.sendFailed(error)
@@ -479,12 +470,9 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 						disposable += signalDisposable
 
 						let aggregate = NSMutableData()
-						signal.observe(Observer(next: { readData in
-							switch readData {
-							case let .Chunk(data):
-								observer.sendNext(.StandardError(data))
-								aggregate.appendData(data)
-							}
+						signal.observe(Observer(next: { data in
+							observer.sendNext(.StandardError(data))
+							aggregate.appendData(data)
 						}, failed: { error in
 							observer.sendFailed(error)
 							stderrAggregatedObserver.sendFailed(error)
