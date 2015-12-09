@@ -140,7 +140,7 @@ private final class Pipe {
 	///
 	/// After starting the returned producer, `readFD` should not be used
 	/// anywhere else, as it may close unexpectedly.
-	func transferReadsToProducer() -> SignalProducer<dispatch_data_t, TaskError> {
+	func transferReadsToProducer() -> SignalProducer<NSData, TaskError> {
 		return SignalProducer { observer, disposable in
 			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
@@ -159,7 +159,7 @@ private final class Pipe {
 			dispatch_io_set_low_water(channel, 1)
 			dispatch_io_read(channel, 0, Int.max, self.queue) { (done, data, error) in
 				if let data = data {
-					observer.sendNext(data)
+					observer.sendNext(data as! NSData)
 				}
 
 				if error == ECANCELED {
@@ -226,60 +226,6 @@ private final class Pipe {
 			disposable.addDisposable {
 				dispatch_io_close(channel, DISPATCH_IO_STOP)
 			}
-		}
-	}
-}
-
-/// Sent when reading from a pipe.
-private enum ReadData {
-	/// A chunk of data, sent as soon as it is received.
-	case Chunk(NSData)
-
-	/// The aggregate of all data sent so far, sent right before completion.
-	///
-	/// No further chunks will occur after this has been sent.
-	case Aggregated(NSData)
-
-	/// Convenience constructor for a `Chunk` from `dispatch_data_t`.
-	static func chunk(data: dispatch_data_t) -> ReadData {
-		return .Chunk(data as! NSData)
-	}
-
-	/// Convenience constructor for an `Aggregated` from `dispatch_data_t`.
-	static func aggregated(data: dispatch_data_t?) -> ReadData {
-		if let data = data {
-			return .Aggregated(data as! NSData)
-		} else {
-			return .Aggregated(NSData())
-		}
-	}
-}
-
-/// Takes ownership of the read handle from the given pipe, then sends
-/// `ReadData` values for all data read.
-private func aggregateDataReadFromPipe(pipe: Pipe) -> SignalProducer<ReadData, TaskError> {
-	let readProducer = pipe.transferReadsToProducer()
-
-	return SignalProducer { observer, disposable in
-		var buffer: dispatch_data_t? = nil
-
-		readProducer.startWithSignal { signal, signalDisposable in
-			disposable.addDisposable(signalDisposable)
-
-			signal.observe(Observer(next: { data in
-				observer.sendNext(.chunk(data))
-
-				if let existingBuffer = buffer {
-					buffer = dispatch_data_create_concat(existingBuffer, data)
-				} else {
-					buffer = data
-				}
-			}, failed: observer.sendFailed
-			, completed: {
-				observer.sendNext(.aggregated(buffer))
-				observer.sendCompleted()
-			}, interrupted: observer.sendInterrupted
-			))
 		}
 	}
 }
@@ -473,8 +419,8 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 
 		SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
 			.flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<NSData>, TaskError> in
-				let stdoutProducer = aggregateDataReadFromPipe(stdoutPipe)
-				let stderrProducer = aggregateDataReadFromPipe(stderrPipe)
+				let stdoutProducer = stdoutPipe.transferReadsToProducer()
+				let stderrProducer = stderrPipe.transferReadsToProducer()
 
 				return SignalProducer { observer, disposable in
 					let (stdoutAggregated, stdoutAggregatedObserver) = SignalProducer<NSData, TaskError>.buffer(1)
@@ -483,38 +429,34 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 					stdoutProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
 
-						signal.observe(Observer(next: { readData in
-							switch readData {
-							case let .Chunk(data):
-								observer.sendNext(.StandardOutput(data))
-
-							case let .Aggregated(data):
-								stdoutAggregatedObserver.sendNext(data)
-							}
+						let aggregate = NSMutableData()
+						signal.observe(Observer(next: { data in
+							observer.sendNext(.StandardOutput(data))
+							aggregate.appendData(data)
 						}, failed: { error in
 							observer.sendFailed(error)
 							stdoutAggregatedObserver.sendFailed(error)
-						}, completed: stdoutAggregatedObserver.sendCompleted
-						, interrupted: stdoutAggregatedObserver.sendInterrupted
+						}, completed: {
+							stdoutAggregatedObserver.sendNext(aggregate)
+							stdoutAggregatedObserver.sendCompleted()
+						}, interrupted: stdoutAggregatedObserver.sendInterrupted
 						))
 					}
 
 					stderrProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
 
-						signal.observe(Observer(next: { readData in
-							switch readData {
-							case let .Chunk(data):
-								observer.sendNext(.StandardError(data))
-
-							case let .Aggregated(data):
-								stderrAggregatedObserver.sendNext(data)
-							}
+						let aggregate = NSMutableData()
+						signal.observe(Observer(next: { data in
+							observer.sendNext(.StandardError(data))
+							aggregate.appendData(data)
 						}, failed: { error in
 							observer.sendFailed(error)
 							stderrAggregatedObserver.sendFailed(error)
-						}, completed: stderrAggregatedObserver.sendCompleted
-						, interrupted: stderrAggregatedObserver.sendInterrupted
+						}, completed: {
+							stderrAggregatedObserver.sendNext(aggregate)
+							stderrAggregatedObserver.sendCompleted()
+						}, interrupted: stderrAggregatedObserver.sendInterrupted
 						))
 					}
 
