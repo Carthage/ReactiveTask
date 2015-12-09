@@ -301,7 +301,7 @@ public protocol TaskEventType {
 /// Represents events that can occur during the execution of a task that is
 /// expected to terminate with a result of type T (upon success).
 public enum TaskEvent<T>: TaskEventType {
-	/// The task was launched.
+	/// The task is about to be launched.
 	case Launch(Task)
 	
 	/// Some data arrived from the task on `stdout`.
