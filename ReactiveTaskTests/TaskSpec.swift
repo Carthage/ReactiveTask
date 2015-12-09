@@ -15,7 +15,7 @@ import Result
 
 class TaskSpec: QuickSpec {
 	override func spec() {
-		it("should notify that a task was launched") {
+		it("should notify that a task is about to be launched") {
 			var isLaunched: Bool = false
 
 			let task = Task("/usr/bin/true")
