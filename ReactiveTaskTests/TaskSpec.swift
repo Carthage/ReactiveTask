@@ -15,6 +15,23 @@ import Result
 
 class TaskSpec: QuickSpec {
 	override func spec() {
+		it("should notify that a task is about to be launched") {
+			var isLaunched: Bool = false
+
+			let task = Task("/usr/bin/true")
+			let result = launchTask(task)
+				.on(next: { event in
+					if case let .Launch(launched) = event {
+						isLaunched = true
+						expect(launched) == task
+					}
+				})
+				.wait()
+
+			expect(result.error).to(beNil())
+			expect(isLaunched) == true
+		}
+
 		it("should launch a task that writes to stdout") {
 			let result = launchTask(Task("/bin/echo", arguments: [ "foobar" ]))
 				.reduce(NSMutableData()) { aggregated, event in

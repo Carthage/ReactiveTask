@@ -247,7 +247,7 @@ public protocol TaskEventType {
 /// Represents events that can occur during the execution of a task that is
 /// expected to terminate with a result of type T (upon success).
 public enum TaskEvent<T>: TaskEventType {
-	/// The task was launched.
+	/// The task is about to be launched.
 	case Launch(Task)
 	
 	/// Some data arrived from the task on `stdout`.
@@ -377,27 +377,27 @@ extension Signal where Value: TaskEventType {
 /// Launches a new shell task.
 ///
 /// - Parameters:
-///   - taskDescription: The task to launch.
-///   - standardInput:   Data to stream to standard input of the launched process. If nil, stdin will
-///                      be inherited from the parent process.
+///   - task:          The task to launch.
+///   - standardInput: Data to stream to standard input of the launched process. If nil, stdin will
+///                    be inherited from the parent process.
 ///
 /// - Returns: A producer that will launch the task when started, then send
 /// `TaskEvent`s as execution proceeds.
-public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSData, NoError>? = nil) -> SignalProducer<TaskEvent<NSData>, TaskError> {
+public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError>? = nil) -> SignalProducer<TaskEvent<NSData>, TaskError> {
 	return SignalProducer { observer, disposable in
-		let queue = dispatch_queue_create(taskDescription.description, DISPATCH_QUEUE_SERIAL)
+		let queue = dispatch_queue_create(task.description, DISPATCH_QUEUE_SERIAL)
 		let group = Task.group
 
-		let task = NSTask()
-		task.launchPath = taskDescription.launchPath
-		task.arguments = taskDescription.arguments
+		let rawTask = NSTask()
+		rawTask.launchPath = task.launchPath
+		rawTask.arguments = task.arguments
 
-		if let cwd = taskDescription.workingDirectoryPath {
-			task.currentDirectoryPath = cwd
+		if let cwd = task.workingDirectoryPath {
+			rawTask.currentDirectoryPath = cwd
 		}
 
-		if let env = taskDescription.environment {
-			task.environment = env
+		if let env = task.environment {
+			rawTask.environment = env
 		}
 
 		var stdinProducer: SignalProducer<(), TaskError> = .empty
@@ -405,7 +405,7 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 		if let input = standardInput {
 			switch Pipe.create(queue, group) {
 			case let .Success(pipe):
-				task.standardInput = pipe.readHandle
+				rawTask.standardInput = pipe.readHandle
 
 				stdinProducer = pipe.writeDataFromProducer(input).on(started: {
 					close(pipe.readFD)
@@ -460,11 +460,11 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 						))
 					}
 
-					task.standardOutput = stdoutPipe.writeHandle
-					task.standardError = stderrPipe.writeHandle
+					rawTask.standardOutput = stdoutPipe.writeHandle
+					rawTask.standardError = stderrPipe.writeHandle
 
 					dispatch_group_enter(group)
-					task.terminationHandler = { task in
+					rawTask.terminationHandler = { task in
 						let terminationStatus = task.terminationStatus
 						if terminationStatus == EXIT_SUCCESS {
 							// Wait for stderr to finish, then pass
@@ -486,8 +486,9 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 						}
 						dispatch_group_leave(group)
 					}
-
-					task.launch()
+					
+					observer.sendNext(.Launch(task))
+					rawTask.launch()
 					close(stdoutPipe.writeFD)
 					close(stderrPipe.writeFD)
 
@@ -496,7 +497,7 @@ public func launchTask(taskDescription: Task, standardInput: SignalProducer<NSDa
 					}
 
 					disposable.addDisposable {
-						task.terminate()
+						rawTask.terminate()
 					}
 				}
 			}
