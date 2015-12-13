@@ -8,6 +8,7 @@ notifications:
   slack:
     secure: Nh1mbn1RzYrI5tIY52gNrMy+PX1hdq2rIAJHxJjeiWjQDYfIoynhQ/2NIKs6Y0b0E5GIQEtF1fereyWdxcoEFGloY3cq4HZ7dgqr9kzOHrlDMp80fWbcoTqrgbOsKreFFtrv413d5+YcNkJvkYRfnxbuWLPZPszrcbw82TyRL60=
 before_deploy:
+  - brew update
   - brew install carthage
   - carthage build --no-skip-current
   - carthage archive ReactiveTask
