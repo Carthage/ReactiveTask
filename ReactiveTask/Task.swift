@@ -262,13 +262,10 @@ public enum TaskEvent<T>: TaskEventType {
 
 	/// The resulting value, if the event is `Success`.
 	public var value: T? {
-		switch self {
-		case .Launch, .StandardOutput, .StandardError:
-			return nil
-
-		case let .Success(value):
+		if case let .Success(value) = self {
 			return value
 		}
+		return nil
 	}
 
 	/// Maps over the value embedded in a `Success` event.
