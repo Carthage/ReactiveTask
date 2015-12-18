@@ -301,7 +301,7 @@ public enum TaskEvent<T>: TaskEventType {
 			return SignalProducer<TaskEvent<U>, Error>(value: .StandardError(data))
 
 		case let .Success(value):
-			return transform(value).map { .Success($0) }
+			return transform(value).map(TaskEvent<U>.Success)
 		}
 	}
 }
@@ -471,7 +471,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 							// through stdout.
 							disposable += stderrAggregated
 								.then(stdoutAggregated)
-								.map { data in .Success(data) }
+								.map(TaskEvent.Success)
 								.start(observer)
 						} else {
 							// Wait for stdout to finish, then pass
