@@ -292,13 +292,13 @@ public enum TaskEvent<T>: TaskEventType {
 	public func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		switch self {
 		case let .Launch(task):
-			return SignalProducer<TaskEvent<U>, Error>(value: .Launch(task))
+			return .init(value: .Launch(task))
 			
 		case let .StandardOutput(data):
-			return SignalProducer<TaskEvent<U>, Error>(value: .StandardOutput(data))
+			return .init(value: .StandardOutput(data))
 
 		case let .StandardError(data):
-			return SignalProducer<TaskEvent<U>, Error>(value: .StandardError(data))
+			return .init(value: .StandardError(data))
 
 		case let .Success(value):
 			return transform(value).map(TaskEvent<U>.Success)
