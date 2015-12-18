@@ -38,7 +38,7 @@ public struct Task {
 	}
 	
 	/// A GCD group which to wait completion
-	private static var group = dispatch_group_create()
+	private static let group = dispatch_group_create()
 	
 	/// wait for all task termination
 	public static func waitForAllTaskTermination() {
@@ -262,13 +262,10 @@ public enum TaskEvent<T>: TaskEventType {
 
 	/// The resulting value, if the event is `Success`.
 	public var value: T? {
-		switch self {
-		case .Launch, .StandardOutput, .StandardError:
-			return nil
-
-		case let .Success(value):
+		if case let .Success(value) = self {
 			return value
 		}
+		return nil
 	}
 
 	/// Maps over the value embedded in a `Success` event.
@@ -292,16 +289,16 @@ public enum TaskEvent<T>: TaskEventType {
 	public func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		switch self {
 		case let .Launch(task):
-			return SignalProducer<TaskEvent<U>, Error>(value: .Launch(task))
+			return .init(value: .Launch(task))
 			
 		case let .StandardOutput(data):
-			return SignalProducer<TaskEvent<U>, Error>(value: .StandardOutput(data))
+			return .init(value: .StandardOutput(data))
 
 		case let .StandardError(data):
-			return SignalProducer<TaskEvent<U>, Error>(value: .StandardError(data))
+			return .init(value: .StandardError(data))
 
 		case let .Success(value):
-			return transform(value).map { .Success($0) }
+			return transform(value).map(TaskEvent<U>.Success)
 		}
 	}
 }
@@ -471,7 +468,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 							// through stdout.
 							disposable += stderrAggregated
 								.then(stdoutAggregated)
-								.map { data in .Success(data) }
+								.map(TaskEvent.Success)
 								.start(observer)
 						} else {
 							// Wait for stdout to finish, then pass

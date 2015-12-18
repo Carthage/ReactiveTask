@@ -35,12 +35,8 @@ class TaskSpec: QuickSpec {
 		it("should launch a task that writes to stdout") {
 			let result = launchTask(Task("/bin/echo", arguments: [ "foobar" ]))
 				.reduce(NSMutableData()) { aggregated, event in
-					switch event {
-					case let .StandardOutput(data):
+					if case let .StandardOutput(data) = event {
 						aggregated.appendData(data)
-
-					default:
-						break
 					}
 
 					return aggregated
@@ -56,12 +52,8 @@ class TaskSpec: QuickSpec {
 		it("should launch a task that writes to stderr") {
 			let result = launchTask(Task("/usr/bin/stat", arguments: [ "not-a-real-file" ]))
 				.reduce(NSMutableData()) { aggregated, event in
-					switch event {
-					case let .StandardError(data):
+					if case let .StandardError(data) = event {
 						aggregated.appendData(data)
-
-					default:
-						break
 					}
 
 					return aggregated
