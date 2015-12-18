@@ -38,7 +38,7 @@ public struct Task {
 	}
 	
 	/// A GCD group which to wait completion
-	private static var group = dispatch_group_create()
+	private static let group = dispatch_group_create()
 	
 	/// wait for all task termination
 	public static func waitForAllTaskTermination() {
