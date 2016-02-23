@@ -80,5 +80,17 @@ class TaskSpec: QuickSpec {
 				expect(NSString(data: data, encoding: NSUTF8StringEncoding)).to(equal("bar\nbuzz\nfoo\nfuzz\n"))
 			}
 		}
+
+		it("should error correctly") {
+			let task = Task("/usr/bin/stat", arguments: [ "not-a-real-file" ])
+			let result = launchTask(task)
+				.wait()
+
+			expect(result).notTo(beNil())
+			expect(result.error).toNot(beNil())
+			if let error = result.error {
+				expect(error.description) == "A shell task (/usr/bin/stat not-a-real-file) failed with exit code 1:\nstat: not-a-real-file: stat: No such file or directory\n"
+			}
+		}
 	}
 }

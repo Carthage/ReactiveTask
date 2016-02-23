@@ -461,8 +461,8 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 					rawTask.standardError = stderrPipe.writeHandle
 
 					dispatch_group_enter(group)
-					rawTask.terminationHandler = { task in
-						let terminationStatus = task.terminationStatus
+					rawTask.terminationHandler = { nstask in
+						let terminationStatus = nstask.terminationStatus
 						if terminationStatus == EXIT_SUCCESS {
 							// Wait for stderr to finish, then pass
 							// through stdout.
@@ -477,7 +477,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 								.then(stderrAggregated)
 								.flatMap(.Concat) { data -> SignalProducer<TaskEvent<NSData>, TaskError> in
 									let errorString = (data.length > 0 ? NSString(data: data, encoding: NSUTF8StringEncoding) as? String : nil)
-									return SignalProducer(error: .ShellTaskFailed(exitCode: terminationStatus, standardError: errorString))
+									return SignalProducer(error: .ShellTaskFailed(task: task, exitCode: terminationStatus, standardError: errorString))
 								}
 								.start(observer)
 						}
