@@ -12,7 +12,7 @@ import ReactiveCocoa
 /// An error originating from ReactiveTask.
 public enum TaskError: ErrorType {
 	/// A shell task exited unsuccessfully.
-	case ShellTaskFailed(task: Task, exitCode: Int32, standardError: String?)
+	case ShellTaskFailed(Task, exitCode: Int32, standardError: String?)
 
 	/// An error was returned from a POSIX API.
 	case POSIXError(Int32)
