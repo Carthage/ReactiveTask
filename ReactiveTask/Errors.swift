@@ -34,3 +34,16 @@ extension TaskError: CustomStringConvertible {
 		}
 	}
 }
+
+extension TaskError: Equatable {}
+
+public func ==(lhs: TaskError, rhs: TaskError) -> Bool {
+	switch (lhs, rhs) {
+	case (.ShellTaskFailed(let lhsTask, let lhsCode, let lhsErr), .ShellTaskFailed(let rhsTask, let rhsCode, let rhsErr)):
+		return lhsTask == rhsTask && lhsCode == rhsCode && lhsErr == rhsErr
+	case (.POSIXError(let lhsCode), .POSIXError(let rhsCode)):
+		return lhsCode == rhsCode
+	default:
+		return false
+	}
+}
