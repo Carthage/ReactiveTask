@@ -87,7 +87,7 @@ class TaskSpec: QuickSpec {
 				.wait()
 
 			expect(result).notTo(beNil())
-			expect(result.error).toNot(beNil())
+			expect(result.error).notTo(beNil())
 			expect(result.error) == TaskError.ShellTaskFailed(task, exitCode: 1, standardError: "stat: not-a-real-file: stat: No such file or directory\n")
 			if let error = result.error {
 				expect(error.description) == "A shell task (/usr/bin/stat not-a-real-file) failed with exit code 1:\nstat: not-a-real-file: stat: No such file or directory\n"
