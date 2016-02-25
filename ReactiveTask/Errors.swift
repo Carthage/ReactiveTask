@@ -10,7 +10,7 @@ import Foundation
 import ReactiveCocoa
 
 /// An error originating from ReactiveTask.
-public enum TaskError: ErrorType {
+public enum TaskError: ErrorType, Equatable {
 	/// A shell task exited unsuccessfully.
 	case ShellTaskFailed(Task, exitCode: Int32, standardError: String?)
 
@@ -35,14 +35,14 @@ extension TaskError: CustomStringConvertible {
 	}
 }
 
-extension TaskError: Equatable {}
-
-public func ==(lhs: TaskError, rhs: TaskError) -> Bool {
+public func == (lhs: TaskError, rhs: TaskError) -> Bool {
 	switch (lhs, rhs) {
-	case (.ShellTaskFailed(let lhsTask, let lhsCode, let lhsErr), .ShellTaskFailed(let rhsTask, let rhsCode, let rhsErr)):
+	case let (.ShellTaskFailed(lhsTask, lhsCode, lhsErr), .ShellTaskFailed(rhsTask, rhsCode, rhsErr)):
 		return lhsTask == rhsTask && lhsCode == rhsCode && lhsErr == rhsErr
-	case (.POSIXError(let lhsCode), .POSIXError(let rhsCode)):
+
+	case let (.POSIXError(lhsCode), .POSIXError(rhsCode)):
 		return lhsCode == rhsCode
+
 	default:
 		return false
 	}
