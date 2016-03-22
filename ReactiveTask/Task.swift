@@ -232,7 +232,7 @@ private final class Pipe {
 
 public protocol TaskEventType {
 	/// The type of value embedded in a `Success` event.
-	typealias T
+	associatedtype T
 
 	/// The resulting value, if the event is `Success`.
 	var value: T? { get }
