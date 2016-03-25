@@ -1,5 +1,5 @@
 github "Quick/Nimble" "v3.2.0"
-github "Quick/Quick" "5367cab29147d7a8e9a1da42247e355aafdc2f35"
+github "Quick/Quick" "3a1d88fb81476001c62f086dbd94bb0f5354f1a3"
 github "antitypical/Result" "1.0.2"
 github "jspahrsummers/xcconfigs" "0.9"
-github "ReactiveCocoa/ReactiveCocoa" "6f63eb6569772a90f0b4358acb33b93a4f8105b2"
+github "ReactiveCocoa/ReactiveCocoa" "81befccd188bf2df9b3df833f7fa67763cb4b047"
