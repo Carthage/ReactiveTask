@@ -419,9 +419,28 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 				let stdoutProducer = stdoutPipe.transferReadsToProducer()
 				let stderrProducer = stderrPipe.transferReadsToProducer()
 
+				enum Aggregation {
+					case Value(NSData)
+					case Failed(TaskError)
+					case Interrupted
+
+					var producer: SignalProducer<NSData, TaskError> {
+						switch self {
+						case let .Value(data):
+							return .init(value: data)
+						case let .Failed(error):
+							return .init(error: error)
+						case .Interrupted:
+							return SignalProducer { observer, _ in
+								observer.sendInterrupted()
+							}
+						}
+					}
+				}
+
 				return SignalProducer { observer, disposable in
-					let (stdoutAggregated, stdoutAggregatedObserver) = SignalProducer<NSData, TaskError>.buffer(1)
-					let (stderrAggregated, stderrAggregatedObserver) = SignalProducer<NSData, TaskError>.buffer(1)
+					let stdoutAggregated = MutableProperty<Aggregation?>(nil)
+					let stderrAggregated = MutableProperty<Aggregation?>(nil)
 
 					stdoutProducer.startWithSignal { signal, signalDisposable in
 						disposable += signalDisposable
@@ -432,12 +451,12 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 							aggregate.appendData(data)
 						}, failed: { error in
 							observer.sendFailed(error)
-							stdoutAggregatedObserver.sendFailed(error)
+							stdoutAggregated.value = .Failed(error)
 						}, completed: {
-							stdoutAggregatedObserver.sendNext(aggregate)
-							stdoutAggregatedObserver.sendCompleted()
-						}, interrupted: stdoutAggregatedObserver.sendInterrupted
-						))
+							stdoutAggregated.value = .Value(aggregate)
+						}, interrupted: {
+							stdoutAggregated.value = .Interrupted
+						}))
 					}
 
 					stderrProducer.startWithSignal { signal, signalDisposable in
@@ -449,12 +468,12 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 							aggregate.appendData(data)
 						}, failed: { error in
 							observer.sendFailed(error)
-							stderrAggregatedObserver.sendFailed(error)
+							stderrAggregated.value = .Failed(error)
 						}, completed: {
-							stderrAggregatedObserver.sendNext(aggregate)
-							stderrAggregatedObserver.sendCompleted()
-						}, interrupted: stderrAggregatedObserver.sendInterrupted
-						))
+							stderrAggregated.value = .Value(aggregate)
+						}, interrupted: {
+							stderrAggregated.value = .Interrupted
+						}))
 					}
 
 					rawTask.standardOutput = stdoutPipe.writeHandle
@@ -462,19 +481,28 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 
 					dispatch_group_enter(group)
 					rawTask.terminationHandler = { nstask in
+						func getProducer(property: MutableProperty<Aggregation?>) -> SignalProducer<NSData, TaskError> {
+							return property.producer
+								.ignoreNil()
+								.promoteErrors(TaskError.self)
+								.flatMap(.Concat) { $0.producer }
+						}
+						let stdoutAggregatedProducer = getProducer(stdoutAggregated)
+						let stderrAggregatedProducer = getProducer(stderrAggregated)
+
 						let terminationStatus = nstask.terminationStatus
 						if terminationStatus == EXIT_SUCCESS {
 							// Wait for stderr to finish, then pass
 							// through stdout.
-							disposable += stderrAggregated
-								.then(stdoutAggregated)
+							disposable += stderrAggregatedProducer
+								.then(stdoutAggregatedProducer)
 								.map(TaskEvent.Success)
 								.start(observer)
 						} else {
 							// Wait for stdout to finish, then pass
 							// through stderr.
-							disposable += stdoutAggregated
-								.then(stderrAggregated)
+							disposable += stdoutAggregatedProducer
+								.then(stderrAggregatedProducer)
 								.flatMap(.Concat) { data -> SignalProducer<TaskEvent<NSData>, TaskError> in
 									let errorString = (data.length > 0 ? NSString(data: data, encoding: NSUTF8StringEncoding) as? String : nil)
 									return SignalProducer(error: .ShellTaskFailed(task, exitCode: terminationStatus, standardError: errorString))
