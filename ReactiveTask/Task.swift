@@ -439,49 +439,38 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 				}
 
 				return SignalProducer { observer, disposable in
-					let stdoutAggregated = MutableProperty<Aggregation?>(nil)
-					let stderrAggregated = MutableProperty<Aggregation?>(nil)
+					func startAggregating(producer: SignalProducer<NSData, TaskError>) -> AnyProperty<Aggregation?> {
+						let aggregated = MutableProperty<Aggregation?>(nil)
 
-					stdoutProducer.startWithSignal { signal, signalDisposable in
-						disposable += signalDisposable
+						producer.startWithSignal { signal, signalDisposable in
+							disposable += signalDisposable
 
-						let aggregate = NSMutableData()
-						signal.observe(Observer(next: { data in
-							observer.sendNext(.StandardOutput(data))
-							aggregate.appendData(data)
-						}, failed: { error in
-							observer.sendFailed(error)
-							stdoutAggregated.value = .Failed(error)
-						}, completed: {
-							stdoutAggregated.value = .Value(aggregate)
-						}, interrupted: {
-							stdoutAggregated.value = .Interrupted
-						}))
+							let aggregate = NSMutableData()
+							signal.observe(Observer(next: { data in
+								observer.sendNext(.StandardOutput(data))
+								aggregate.appendData(data)
+							}, failed: { error in
+								observer.sendFailed(error)
+								aggregated.value = .Failed(error)
+							}, completed: {
+								aggregated.value = .Value(aggregate)
+							}, interrupted: {
+								aggregated.value = .Interrupted
+							}))
+						}
+
+						return AnyProperty(aggregated)
 					}
 
-					stderrProducer.startWithSignal { signal, signalDisposable in
-						disposable += signalDisposable
-
-						let aggregate = NSMutableData()
-						signal.observe(Observer(next: { data in
-							observer.sendNext(.StandardError(data))
-							aggregate.appendData(data)
-						}, failed: { error in
-							observer.sendFailed(error)
-							stderrAggregated.value = .Failed(error)
-						}, completed: {
-							stderrAggregated.value = .Value(aggregate)
-						}, interrupted: {
-							stderrAggregated.value = .Interrupted
-						}))
-					}
+					let stdoutAggregated = startAggregating(stdoutProducer)
+					let stderrAggregated = startAggregating(stderrProducer)
 
 					rawTask.standardOutput = stdoutPipe.writeHandle
 					rawTask.standardError = stderrPipe.writeHandle
 
 					dispatch_group_enter(group)
 					rawTask.terminationHandler = { nstask in
-						func getProducer(property: MutableProperty<Aggregation?>) -> SignalProducer<NSData, TaskError> {
+						func getProducer(property: AnyProperty<Aggregation?>) -> SignalProducer<NSData, TaskError> {
 							return property.producer
 								.ignoreNil()
 								.promoteErrors(TaskError.self)
