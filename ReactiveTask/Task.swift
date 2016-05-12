@@ -441,7 +441,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 				}
 
 				return SignalProducer { observer, disposable in
-					func startAggregating(producer: Pipe.ReadProducer) -> AnyProperty<Aggregation?> {
+					func startAggregating(producer: Pipe.ReadProducer) -> Pipe.ReadProducer {
 						let aggregated = MutableProperty<Aggregation?>(nil)
 
 						producer.startWithSignal { signal, signalDisposable in
@@ -461,7 +461,10 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 							}))
 						}
 
-						return AnyProperty(aggregated)
+						return aggregated.producer
+							.ignoreNil()
+							.promoteErrors(TaskError.self)
+							.flatMap(.Concat) { $0.producer }
 					}
 
 					let stdoutAggregated = startAggregating(stdoutProducer)
@@ -472,28 +475,19 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 
 					dispatch_group_enter(group)
 					rawTask.terminationHandler = { nstask in
-						func getProducer(property: AnyProperty<Aggregation?>) -> Pipe.ReadProducer {
-							return property.producer
-								.ignoreNil()
-								.promoteErrors(TaskError.self)
-								.flatMap(.Concat) { $0.producer }
-						}
-						let stdoutAggregatedProducer = getProducer(stdoutAggregated)
-						let stderrAggregatedProducer = getProducer(stderrAggregated)
-
 						let terminationStatus = nstask.terminationStatus
 						if terminationStatus == EXIT_SUCCESS {
 							// Wait for stderr to finish, then pass
 							// through stdout.
-							disposable += stderrAggregatedProducer
-								.then(stdoutAggregatedProducer)
+							disposable += stderrAggregated
+								.then(stdoutAggregated)
 								.map(TaskEvent.Success)
 								.start(observer)
 						} else {
 							// Wait for stdout to finish, then pass
 							// through stderr.
-							disposable += stdoutAggregatedProducer
-								.then(stderrAggregatedProducer)
+							disposable += stdoutAggregated
+								.then(stderrAggregated)
 								.flatMap(.Concat) { data -> SignalProducer<TaskEvent<NSData>, TaskError> in
 									let errorString = (data.length > 0 ? NSString(data: data, encoding: NSUTF8StringEncoding) as? String : nil)
 									return SignalProducer(error: .ShellTaskFailed(task, exitCode: terminationStatus, standardError: errorString))
