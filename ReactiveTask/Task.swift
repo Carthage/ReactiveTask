@@ -84,6 +84,8 @@ public func ==(lhs: Task, rhs: Task) -> Bool {
 
 /// A private class used to encapsulate a Unix pipe.
 private final class Pipe {
+	typealias ReadProducer = SignalProducer<NSData, TaskError>
+
 	/// The file descriptor for reading data.
 	let readFD: Int32
 
@@ -140,7 +142,7 @@ private final class Pipe {
 	///
 	/// After starting the returned producer, `readFD` should not be used
 	/// anywhere else, as it may close unexpectedly.
-	func transferReadsToProducer() -> SignalProducer<NSData, TaskError> {
+	func transferReadsToProducer() -> ReadProducer {
 		return SignalProducer { observer, disposable in
 			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
@@ -424,7 +426,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 					case Failed(TaskError)
 					case Interrupted
 
-					var producer: SignalProducer<NSData, TaskError> {
+					var producer: Pipe.ReadProducer {
 						switch self {
 						case let .Value(data):
 							return .init(value: data)
@@ -439,7 +441,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 				}
 
 				return SignalProducer { observer, disposable in
-					func startAggregating(producer: SignalProducer<NSData, TaskError>) -> AnyProperty<Aggregation?> {
+					func startAggregating(producer: Pipe.ReadProducer) -> AnyProperty<Aggregation?> {
 						let aggregated = MutableProperty<Aggregation?>(nil)
 
 						producer.startWithSignal { signal, signalDisposable in
@@ -470,7 +472,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 
 					dispatch_group_enter(group)
 					rawTask.terminationHandler = { nstask in
-						func getProducer(property: AnyProperty<Aggregation?>) -> SignalProducer<NSData, TaskError> {
+						func getProducer(property: AnyProperty<Aggregation?>) -> Pipe.ReadProducer {
 							return property.producer
 								.ignoreNil()
 								.promoteErrors(TaskError.self)
