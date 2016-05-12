@@ -84,6 +84,8 @@ public func ==(lhs: Task, rhs: Task) -> Bool {
 
 /// A private class used to encapsulate a Unix pipe.
 private final class Pipe {
+	typealias ReadProducer = SignalProducer<NSData, TaskError>
+
 	/// The file descriptor for reading data.
 	let readFD: Int32
 
@@ -140,7 +142,7 @@ private final class Pipe {
 	///
 	/// After starting the returned producer, `readFD` should not be used
 	/// anywhere else, as it may close unexpectedly.
-	func transferReadsToProducer() -> SignalProducer<NSData, TaskError> {
+	func transferReadsToProducer() -> ReadProducer {
 		return SignalProducer { observer, disposable in
 			dispatch_group_enter(self.group)
 			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
@@ -424,7 +426,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 					case Failed(TaskError)
 					case Interrupted
 
-					var producer: SignalProducer<NSData, TaskError> {
+					var producer: Pipe.ReadProducer {
 						switch self {
 						case let .Value(data):
 							return .init(value: data)
@@ -439,70 +441,53 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 				}
 
 				return SignalProducer { observer, disposable in
-					let stdoutAggregated = MutableProperty<Aggregation?>(nil)
-					let stderrAggregated = MutableProperty<Aggregation?>(nil)
+					func startAggregating(producer: Pipe.ReadProducer) -> Pipe.ReadProducer {
+						let aggregated = MutableProperty<Aggregation?>(nil)
 
-					stdoutProducer.startWithSignal { signal, signalDisposable in
-						disposable += signalDisposable
+						producer.startWithSignal { signal, signalDisposable in
+							disposable += signalDisposable
 
-						let aggregate = NSMutableData()
-						signal.observe(Observer(next: { data in
-							observer.sendNext(.StandardOutput(data))
-							aggregate.appendData(data)
-						}, failed: { error in
-							observer.sendFailed(error)
-							stdoutAggregated.value = .Failed(error)
-						}, completed: {
-							stdoutAggregated.value = .Value(aggregate)
-						}, interrupted: {
-							stdoutAggregated.value = .Interrupted
-						}))
+							let aggregate = NSMutableData()
+							signal.observe(Observer(next: { data in
+								observer.sendNext(.StandardOutput(data))
+								aggregate.appendData(data)
+							}, failed: { error in
+								observer.sendFailed(error)
+								aggregated.value = .Failed(error)
+							}, completed: {
+								aggregated.value = .Value(aggregate)
+							}, interrupted: {
+								aggregated.value = .Interrupted
+							}))
+						}
+
+						return aggregated.producer
+							.ignoreNil()
+							.promoteErrors(TaskError.self)
+							.flatMap(.Concat) { $0.producer }
 					}
 
-					stderrProducer.startWithSignal { signal, signalDisposable in
-						disposable += signalDisposable
-
-						let aggregate = NSMutableData()
-						signal.observe(Observer(next: { data in
-							observer.sendNext(.StandardError(data))
-							aggregate.appendData(data)
-						}, failed: { error in
-							observer.sendFailed(error)
-							stderrAggregated.value = .Failed(error)
-						}, completed: {
-							stderrAggregated.value = .Value(aggregate)
-						}, interrupted: {
-							stderrAggregated.value = .Interrupted
-						}))
-					}
+					let stdoutAggregated = startAggregating(stdoutProducer)
+					let stderrAggregated = startAggregating(stderrProducer)
 
 					rawTask.standardOutput = stdoutPipe.writeHandle
 					rawTask.standardError = stderrPipe.writeHandle
 
 					dispatch_group_enter(group)
 					rawTask.terminationHandler = { nstask in
-						func getProducer(property: MutableProperty<Aggregation?>) -> SignalProducer<NSData, TaskError> {
-							return property.producer
-								.ignoreNil()
-								.promoteErrors(TaskError.self)
-								.flatMap(.Concat) { $0.producer }
-						}
-						let stdoutAggregatedProducer = getProducer(stdoutAggregated)
-						let stderrAggregatedProducer = getProducer(stderrAggregated)
-
 						let terminationStatus = nstask.terminationStatus
 						if terminationStatus == EXIT_SUCCESS {
 							// Wait for stderr to finish, then pass
 							// through stdout.
-							disposable += stderrAggregatedProducer
-								.then(stdoutAggregatedProducer)
+							disposable += stderrAggregated
+								.then(stdoutAggregated)
 								.map(TaskEvent.Success)
 								.start(observer)
 						} else {
 							// Wait for stdout to finish, then pass
 							// through stderr.
-							disposable += stdoutAggregatedProducer
-								.then(stderrAggregatedProducer)
+							disposable += stdoutAggregated
+								.then(stderrAggregated)
 								.flatMap(.Concat) { data -> SignalProducer<TaskEvent<NSData>, TaskError> in
 									let errorString = (data.length > 0 ? NSString(data: data, encoding: NSUTF8StringEncoding) as? String : nil)
 									return SignalProducer(error: .ShellTaskFailed(task, exitCode: terminationStatus, standardError: errorString))
