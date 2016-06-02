@@ -463,7 +463,6 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 
 						return aggregated.producer
 							.ignoreNil()
-							.promoteErrors(TaskError.self)
 							.flatMap(.Concat) { $0.producer }
 					}
 
