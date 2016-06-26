@@ -38,17 +38,17 @@ public struct Task {
 	}
 	
 	/// A GCD group which to wait completion
-	private static let group = dispatch_group_create()
+	private static let group = DispatchGroup()
 	
 	/// wait for all task termination
 	public static func waitForAllTaskTermination() {
-		dispatch_group_wait(Task.group, DISPATCH_TIME_FOREVER)
+		Task.group.wait(timeout: DispatchTime.distantFuture)
 	}
 }
 
 extension Task: CustomStringConvertible {
 	public var description: String {
-		return "\(launchPath) \(arguments.joinWithSeparator(" "))"
+		return "\(launchPath) \(arguments.joined(separator: " "))"
 	}
 }
 
@@ -70,7 +70,7 @@ private func ==<Key: Equatable, Value: Equatable>(lhs: [Key: Value]?, rhs: [Key:
 	case let (lhs?, rhs?):
 		return lhs == rhs
 		
-	case (.None, .None):
+	case (.none, .none):
 		return true
 		
 	default:
@@ -84,7 +84,7 @@ public func ==(lhs: Task, rhs: Task) -> Bool {
 
 /// A private class used to encapsulate a Unix pipe.
 private final class Pipe {
-	typealias ReadProducer = SignalProducer<NSData, TaskError>
+	typealias ReadProducer = SignalProducer<Data, TaskError>
 
 	/// The file descriptor for reading data.
 	let readFD: Int32
@@ -93,25 +93,25 @@ private final class Pipe {
 	let writeFD: Int32
 
 	/// A GCD queue upon which to deliver I/O callbacks.
-	let queue: dispatch_queue_t
+	let queue: DispatchQueue
 	
 	/// A GCD group which to wait completion
-	let group: dispatch_group_t
+	let group: DispatchGroup
 
 	/// Creates an NSFileHandle corresponding to the `readFD`. The file handle
 	/// will not automatically close the descriptor.
-	var readHandle: NSFileHandle {
-		return NSFileHandle(fileDescriptor: readFD, closeOnDealloc: false)
+	var readHandle: FileHandle {
+		return FileHandle(fileDescriptor: readFD, closeOnDealloc: false)
 	}
 
 	/// Creates an NSFileHandle corresponding to the `writeFD`. The file handle
 	/// will not automatically close the descriptor.
-	var writeHandle: NSFileHandle {
-		return NSFileHandle(fileDescriptor: writeFD, closeOnDealloc: false)
+	var writeHandle: FileHandle {
+		return FileHandle(fileDescriptor: writeFD, closeOnDealloc: false)
 	}
 
 	/// Initializes a pipe object using existing file descriptors.
-	init(readFD: Int32, writeFD: Int32, queue: dispatch_queue_t, group: dispatch_group_t) {
+	init(readFD: Int32, writeFD: Int32, queue: DispatchQueue, group: DispatchGroup) {
 		precondition(readFD >= 0)
 		precondition(writeFD >= 0)
 
@@ -122,7 +122,8 @@ private final class Pipe {
 	}
 
 	/// Instantiates a new descriptor pair.
-	class func create(queue: dispatch_queue_t, _ group: dispatch_group_t) -> Result<Pipe, TaskError> {
+	//TODO: Swift 3 API guidelines?
+	class func create(_ queue: DispatchQueue, _ group: DispatchGroup) -> Result<Pipe, TaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
 			return .Success(self.init(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
@@ -144,8 +145,8 @@ private final class Pipe {
 	/// anywhere else, as it may close unexpectedly.
 	func transferReadsToProducer() -> ReadProducer {
 		return SignalProducer { observer, disposable in
-			dispatch_group_enter(self.group)
-			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.readFD, self.queue) { error in
+			self.group.enter()
+			let channel = DispatchIO(type: .stream, fileDescriptor: self.readFD, queue: self.queue) { error in
 				if error == 0 {
 					observer.sendCompleted()
 				} else if error == ECANCELED {
@@ -155,13 +156,16 @@ private final class Pipe {
 				}
 
 				close(self.readFD)
-				dispatch_group_leave(self.group)
+				self.group.leave()
 			}
 
-			dispatch_io_set_low_water(channel, 1)
-			dispatch_io_read(channel, 0, Int.max, self.queue) { (done, data, error) in
-				if let data = data {
-					observer.sendNext(data as! NSData)
+			channel.setLimit(lowWater: 1)
+			channel.read(offset: 0, length: Int.max, queue: self.queue) { (done, dispatchData, error) in
+				if let dispatchData = dispatchData {
+					let bytes = UnsafeMutablePointer<UInt8>(allocatingCapacity: dispatchData.count)
+					dispatchData.copyBytes(to: bytes, count: dispatchData.count)
+					let data = Data(bytes: bytes, count: dispatchData.count)
+					observer.sendNext(data)
 				}
 
 				if error == ECANCELED {
@@ -171,12 +175,12 @@ private final class Pipe {
 				}
 
 				if done {
-					dispatch_io_close(channel, 0)
+					channel.close()
 				}
 			}
 
 			disposable.addDisposable {
-				dispatch_io_close(channel, DISPATCH_IO_STOP)
+				channel.close(flags: .stop)
 			}
 		}
 	}
@@ -189,10 +193,11 @@ private final class Pipe {
 	/// anywhere else, as it may close unexpectedly.
 	///
 	/// Returns a producer that will complete or error.
-	func writeDataFromProducer(producer: SignalProducer<NSData, NoError>) -> SignalProducer<(), TaskError> {
+	//TODO: Swift 3 API guidelines?
+	func writeDataFromProducer(_ producer: SignalProducer<Data, NoError>) -> SignalProducer<(), TaskError> {
 		return SignalProducer { observer, disposable in
-			dispatch_group_enter(self.group)
-			let channel = dispatch_io_create(DISPATCH_IO_STREAM, self.writeFD, self.queue) { error in
+			self.group.enter()
+			let channel = DispatchIO(type: .stream, fileDescriptor: self.writeFD, queue: self.queue) { error in
 				if error == 0 {
 					observer.sendCompleted()
 				} else if error == ECANCELED {
@@ -202,16 +207,18 @@ private final class Pipe {
 				}
 
 				close(self.writeFD)
-				dispatch_group_leave(self.group)
+				self.group.leave()
 			}
 
 			producer.startWithSignal { signal, producerDisposable in
 				disposable.addDisposable(producerDisposable)
 
 				signal.observe(Observer(next: { data in
-					let dispatchData = dispatch_data_create(data.bytes, data.length, self.queue, nil)
-
-					dispatch_io_write(channel, 0, dispatchData, self.queue) { (done, data, error) in
+					let bytes = UnsafeMutablePointer<UInt8>(allocatingCapacity: data.count)
+					data.copyBytes(to: bytes, count: data.count)
+					let buffer = UnsafeBufferPointer(start: bytes, count: data.count)
+					let dispatchData = DispatchData(bytes: buffer)
+					channel.write(offset: 0, data: dispatchData, queue: self.queue) { (done, data, error) in
 						if error == ECANCELED {
 							observer.sendInterrupted()
 						} else if error != 0 {
@@ -219,14 +226,14 @@ private final class Pipe {
 						}
 					}
 				}, completed: {
-					dispatch_io_close(channel, 0)
+					channel.close()
 				}, interrupted: {
 					observer.sendInterrupted()
 				}))
 			}
 
 			disposable.addDisposable {
-				dispatch_io_close(channel, DISPATCH_IO_STOP)
+				channel.close(flags: .stop)
 			}
 		}
 	}
@@ -240,83 +247,83 @@ public protocol TaskEventType {
 	var value: T? { get }
 
 	/// Maps over the value embedded in a `Success` event.
-	func map<U>(@noescape transform: T -> U) -> TaskEvent<U>
+	func map<U>( _ transform: @noescape(T) -> U) -> TaskEvent<U>
 
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
-	func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error>
+	func producerMap<U, Error>( _ transform: @noescape(T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error>
 }
 
 /// Represents events that can occur during the execution of a task that is
 /// expected to terminate with a result of type T (upon success).
 public enum TaskEvent<T>: TaskEventType {
 	/// The task is about to be launched.
-	case Launch(Task)
+	case launch(Task)
 	
 	/// Some data arrived from the task on `stdout`.
-	case StandardOutput(NSData)
+	case standardOutput(Data)
 
 	/// Some data arrived from the task on `stderr`.
-	case StandardError(NSData)
+	case standardError(Data)
 
 	/// The task exited successfully (with status 0), and value T was produced
 	/// as a result.
-	case Success(T)
+	case success(T)
 
 	/// The resulting value, if the event is `Success`.
 	public var value: T? {
-		if case let .Success(value) = self {
+		if case let .success(value) = self {
 			return value
 		}
 		return nil
 	}
 
 	/// Maps over the value embedded in a `Success` event.
-	public func map<U>(@noescape transform: T -> U) -> TaskEvent<U> {
+	public func map<U>( _ transform: @noescape(T) -> U) -> TaskEvent<U> {
 		switch self {
-		case let .Launch(task):
-			return .Launch(task)
+		case let .launch(task):
+			return .launch(task)
 
-		case let .StandardOutput(data):
-			return .StandardOutput(data)
+		case let .standardOutput(data):
+			return .standardOutput(data)
 
-		case let .StandardError(data):
-			return .StandardError(data)
+		case let .standardError(data):
+			return .standardError(data)
 
-		case let .Success(value):
-			return .Success(transform(value))
+		case let .success(value):
+			return .success(transform(value))
 		}
 	}
 
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
-	public func producerMap<U, Error>(@noescape transform: T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
+	public func producerMap<U, Error>( _ transform: @noescape(T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		switch self {
-		case let .Launch(task):
-			return .init(value: .Launch(task))
+		case let .launch(task):
+			return .init(value: .launch(task))
 			
-		case let .StandardOutput(data):
-			return .init(value: .StandardOutput(data))
+		case let .standardOutput(data):
+			return .init(value: .standardOutput(data))
 
-		case let .StandardError(data):
-			return .init(value: .StandardError(data))
+		case let .standardError(data):
+			return .init(value: .standardError(data))
 
-		case let .Success(value):
-			return transform(value).map(TaskEvent<U>.Success)
+		case let .success(value):
+			return transform(value).map(TaskEvent<U>.success)
 		}
 	}
 }
 
 public func == <T: Equatable>(lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
 	switch (lhs, rhs) {
-	case let (.Launch(left), .Launch(right)):
+	case let (.launch(left), .launch(right)):
 		return left == right
 	
-	case let (.StandardOutput(left), .StandardOutput(right)):
+	case let (.standardOutput(left), .standardOutput(right)):
 		return left == right
 	
-	case let (.StandardError(left), .StandardError(right)):
+	case let (.standardError(left), .standardError(right)):
 		return left == right
 	
-	case let (.Success(left), .Success(right)):
+	case let (.success(left), .success(right)):
 		return left == right
 	
 	default:
@@ -326,21 +333,22 @@ public func == <T: Equatable>(lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
 
 extension TaskEvent: CustomStringConvertible {
 	public var description: String {
-		func dataDescription(data: NSData) -> String {
-			return NSString(data: data, encoding: NSUTF8StringEncoding).map { $0 as String } ?? data.description
+		func dataDescription(_ data: Data) -> String {
+			// TODO: Check whether this can be done without NSString
+			return NSString(data: data, encoding: String.Encoding.utf8.rawValue).map { $0 as String } ?? data.description
 		}
 
 		switch self {
-		case let .Launch(task):
+		case let .launch(task):
 			return "launch: \(task)"
 			
-		case let .StandardOutput(data):
+		case let .standardOutput(data):
 			return "stdout: " + dataDescription(data)
 
-		case let .StandardError(data):
+		case let .standardError(data):
 			return "stderr: " + dataDescription(data)
 
-		case let .Success(value):
+		case let .success(value):
 			return "success(\(value))"
 		}
 	}
@@ -348,7 +356,7 @@ extension TaskEvent: CustomStringConvertible {
 
 extension SignalProducer where Value: TaskEventType {
 	/// Maps the values inside a stream of TaskEvents into new SignalProducers.
-	public func flatMapTaskEvents<U>(strategy: FlattenStrategy, transform: Value.T -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
+	public func flatMapTaskEvents<U>(_ strategy: FlattenStrategy, transform: (Value.T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		return self.flatMap(strategy) { taskEvent in
 			return taskEvent.producerMap(transform)
 		}
@@ -382,12 +390,13 @@ extension Signal where Value: TaskEventType {
 ///
 /// - Returns: A producer that will launch the task when started, then send
 /// `TaskEvent`s as execution proceeds.
-public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError>? = nil) -> SignalProducer<TaskEvent<NSData>, TaskError> {
+//TODO: Swift 3 API guidelines?
+public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError>? = nil) -> SignalProducer<TaskEvent<Data>, TaskError> {
 	return SignalProducer { observer, disposable in
-		let queue = dispatch_queue_create(task.description, DISPATCH_QUEUE_SERIAL)
+		let queue = DispatchQueue(label: task.description, attributes: .serial)
 		let group = Task.group
 
-		let rawTask = NSTask()
+		let rawTask = Foundation.Task()
 		rawTask.launchPath = task.launchPath
 		rawTask.arguments = task.arguments
 
@@ -417,22 +426,22 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 		}
 
 		SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
-			.flatMap(.Merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<NSData>, TaskError> in
+			.flatMap(.merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<Data>, TaskError> in
 				let stdoutProducer = stdoutPipe.transferReadsToProducer()
 				let stderrProducer = stderrPipe.transferReadsToProducer()
 
 				enum Aggregation {
-					case Value(NSData)
-					case Failed(TaskError)
-					case Interrupted
+					case value(Data)
+					case failed(TaskError)
+					case interrupted
 
 					var producer: Pipe.ReadProducer {
 						switch self {
-						case let .Value(data):
+						case let .value(data):
 							return .init(value: data)
-						case let .Failed(error):
+						case let .failed(error):
 							return .init(error: error)
-						case .Interrupted:
+						case .interrupted:
 							return SignalProducer { observer, _ in
 								observer.sendInterrupted()
 							}
@@ -441,29 +450,30 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 				}
 
 				return SignalProducer { observer, disposable in
-					func startAggregating(producer: Pipe.ReadProducer) -> Pipe.ReadProducer {
+					//TODO: Swift 3 API guidelines?
+					func startAggregating(_ producer: Pipe.ReadProducer) -> Pipe.ReadProducer {
 						let aggregated = MutableProperty<Aggregation?>(nil)
 
 						producer.startWithSignal { signal, signalDisposable in
 							disposable += signalDisposable
 
-							let aggregate = NSMutableData()
+							var aggregate = Data()
 							signal.observe(Observer(next: { data in
-								observer.sendNext(.StandardOutput(data))
-								aggregate.appendData(data)
+								observer.sendNext(.standardOutput(data))
+								aggregate.append(data)
 							}, failed: { error in
 								observer.sendFailed(error)
-								aggregated.value = .Failed(error)
+								aggregated.value = .failed(error)
 							}, completed: {
-								aggregated.value = .Value(aggregate)
+								aggregated.value = .value(aggregate)
 							}, interrupted: {
-								aggregated.value = .Interrupted
+								aggregated.value = .interrupted
 							}))
 						}
 
 						return aggregated.producer
 							.ignoreNil()
-							.flatMap(.Concat) { $0.producer }
+							.flatMap(.concat) { $0.producer }
 					}
 
 					let stdoutAggregated = startAggregating(stdoutProducer)
@@ -472,7 +482,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 					rawTask.standardOutput = stdoutPipe.writeHandle
 					rawTask.standardError = stderrPipe.writeHandle
 
-					dispatch_group_enter(group)
+					group.enter()
 					rawTask.terminationHandler = { nstask in
 						let terminationStatus = nstask.terminationStatus
 						if terminationStatus == EXIT_SUCCESS {
@@ -480,23 +490,23 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 							// through stdout.
 							disposable += stderrAggregated
 								.then(stdoutAggregated)
-								.map(TaskEvent.Success)
+								.map(TaskEvent.success)
 								.start(observer)
 						} else {
 							// Wait for stdout to finish, then pass
 							// through stderr.
 							disposable += stdoutAggregated
 								.then(stderrAggregated)
-								.flatMap(.Concat) { data -> SignalProducer<TaskEvent<NSData>, TaskError> in
-									let errorString = (data.length > 0 ? NSString(data: data, encoding: NSUTF8StringEncoding) as? String : nil)
-									return SignalProducer(error: .ShellTaskFailed(task, exitCode: terminationStatus, standardError: errorString))
+								.flatMap(.concat) { data -> SignalProducer<TaskEvent<Data>, TaskError> in
+									let errorString = (data.count > 0 ? NSString(data: data, encoding: String.Encoding.utf8.rawValue) as? String : nil)
+									return SignalProducer(error: .shellTaskFailed(task, exitCode: terminationStatus, standardError: errorString))
 								}
 								.start(observer)
 						}
-						dispatch_group_leave(group)
+						group.leave()
 					}
 					
-					observer.sendNext(.Launch(task))
+					observer.sendNext(.launch(task))
 					rawTask.launch()
 					close(stdoutPipe.writeFD)
 					close(stderrPipe.writeFD)
