@@ -30,7 +30,7 @@ extension TaskError: CustomStringConvertible {
 			return description
 
 		case let .posixError(code):
-			return NSError(domain: NSposixErrorDomain, code: Int(code), userInfo: nil).description
+			return NSError(domain: NSPOSIXErrorDomain, code: Int(code), userInfo: nil).description
 		}
 	}
 }
