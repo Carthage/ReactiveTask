@@ -128,7 +128,7 @@ private final class Pipe {
 		if pipe(&fildes) == 0 {
 			return .Success(self.init(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
 		} else {
-			return .Failure(.POSIXError(errno))
+			return .Failure(.posixError(errno))
 		}
 	}
 
@@ -152,7 +152,7 @@ private final class Pipe {
 				} else if error == ECANCELED {
 					observer.sendInterrupted()
 				} else {
-					observer.sendFailed(.POSIXError(error))
+					observer.sendFailed(.posixError(error))
 				}
 
 				close(self.readFD)
@@ -171,7 +171,7 @@ private final class Pipe {
 				if error == ECANCELED {
 					observer.sendInterrupted()
 				} else if error != 0 {
-					observer.sendFailed(.POSIXError(error))
+					observer.sendFailed(.posixError(error))
 				}
 
 				if done {
@@ -203,7 +203,7 @@ private final class Pipe {
 				} else if error == ECANCELED {
 					observer.sendInterrupted()
 				} else {
-					observer.sendFailed(.POSIXError(error))
+					observer.sendFailed(.posixError(error))
 				}
 
 				close(self.writeFD)
@@ -222,7 +222,7 @@ private final class Pipe {
 						if error == ECANCELED {
 							observer.sendInterrupted()
 						} else if error != 0 {
-							observer.sendFailed(.POSIXError(error))
+							observer.sendFailed(.posixError(error))
 						}
 					}
 				}, completed: {

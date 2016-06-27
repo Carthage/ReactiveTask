@@ -15,7 +15,7 @@ public enum TaskError: ErrorProtocol, Equatable {
 	case shellTaskFailed(Task, exitCode: Int32, standardError: String?)
 
 	/// An error was returned from a POSIX API.
-	case POSIXError(Int32)
+	case posixError(Int32)
 }
 
 extension TaskError: CustomStringConvertible {
@@ -29,8 +29,8 @@ extension TaskError: CustomStringConvertible {
 
 			return description
 
-		case let .POSIXError(code):
-			return NSError(domain: NSPOSIXErrorDomain, code: Int(code), userInfo: nil).description
+		case let .posixError(code):
+			return NSError(domain: NSposixErrorDomain, code: Int(code), userInfo: nil).description
 		}
 	}
 }
@@ -40,7 +40,7 @@ public func == (lhs: TaskError, rhs: TaskError) -> Bool {
 	case let (.shellTaskFailed(lhsTask, lhsCode, lhsErr), .shellTaskFailed(rhsTask, rhsCode, rhsErr)):
 		return lhsTask == rhsTask && lhsCode == rhsCode && lhsErr == rhsErr
 
-	case let (.POSIXError(lhsCode), .POSIXError(rhsCode)):
+	case let (.posixError(lhsCode), .posixError(rhsCode)):
 		return lhsCode == rhsCode
 
 	default:
