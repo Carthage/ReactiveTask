@@ -42,7 +42,7 @@ public struct Task {
 	
 	/// wait for all task termination
 	public static func waitForAllTaskTermination() {
-		Task.group.wait(timeout: DispatchTime.distantFuture)
+		let _ = Task.group.wait(timeout: DispatchTime.distantFuture)
 	}
 }
 
@@ -179,7 +179,7 @@ private final class Pipe {
 				}
 			}
 
-			disposable.addDisposable {
+			let _ = disposable.addDisposable {
 				channel.close(flags: .stop)
 			}
 		}
@@ -232,7 +232,7 @@ private final class Pipe {
 				}))
 			}
 
-			disposable.addDisposable {
+			let _ = disposable.addDisposable {
 				channel.close(flags: .stop)
 			}
 		}
@@ -515,7 +515,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 						disposable += signalDisposable
 					}
 
-					disposable.addDisposable {
+					let _ = disposable.addDisposable {
 						rawTask.terminate()
 					}
 				}
