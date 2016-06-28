@@ -122,7 +122,6 @@ private final class Pipe {
 	}
 
 	/// Instantiates a new descriptor pair.
-	//TODO: Swift 3 API guidelines?
 	class func create(_ queue: DispatchQueue, _ group: DispatchGroup) -> Result<Pipe, TaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
@@ -193,7 +192,6 @@ private final class Pipe {
 	/// anywhere else, as it may close unexpectedly.
 	///
 	/// Returns a producer that will complete or error.
-	//TODO: Swift 3 API guidelines?
 	func writeDataFromProducer(_ producer: SignalProducer<Data, NoError>) -> SignalProducer<(), TaskError> {
 		return SignalProducer { observer, disposable in
 			self.group.enter()
@@ -334,8 +332,7 @@ public func == <T: Equatable>(lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
 extension TaskEvent: CustomStringConvertible {
 	public var description: String {
 		func dataDescription(_ data: Data) -> String {
-			// TODO: Check whether this can be done without NSString
-			return NSString(data: data, encoding: String.Encoding.utf8.rawValue).map { $0 as String } ?? data.description
+			return String(data: data, encoding: String.Encoding.utf8) ?? data.description
 		}
 
 		switch self {
@@ -450,7 +447,6 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 				}
 
 				return SignalProducer { observer, disposable in
-					//TODO: Swift 3 API guidelines?
 					func startAggregating(_ producer: Pipe.ReadProducer) -> Pipe.ReadProducer {
 						let aggregated = MutableProperty<Aggregation?>(nil)
 
