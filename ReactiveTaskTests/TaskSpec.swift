@@ -21,7 +21,7 @@ class TaskSpec: QuickSpec {
 			let task = Task("/usr/bin/true")
 			let result = launchTask(task)
 				.on(next: { event in
-					if case let .Launch(launched) = event {
+					if case let .launch(launched) = event {
 						isLaunched = true
 						expect(launched) == task
 					}
@@ -34,41 +34,43 @@ class TaskSpec: QuickSpec {
 
 		it("should launch a task that writes to stdout") {
 			let result = launchTask(Task("/bin/echo", arguments: [ "foobar" ]))
-				.reduce(NSMutableData()) { aggregated, event in
-					if case let .StandardOutput(data) = event {
-						aggregated.appendData(data)
+				.reduce(Data()) { aggregated, event in
+					var mutableData = aggregated
+					if case let .standardOutput(data) = event {
+						mutableData.append(data)
 					}
 
-					return aggregated
+					return mutableData
 				}
 				.single()
 
 			expect(result).notTo(beNil())
 			if let data = result?.value {
-				expect(NSString(data: data, encoding: NSUTF8StringEncoding)).to(equal("foobar\n"))
+				expect(String(data: data, encoding: String.Encoding.utf8)).to(equal("foobar\n"))
 			}
 		}
 
 		it("should launch a task that writes to stderr") {
 			let result = launchTask(Task("/usr/bin/stat", arguments: [ "not-a-real-file" ]))
-				.reduce(NSMutableData()) { aggregated, event in
-					if case let .StandardError(data) = event {
-						aggregated.appendData(data)
+				.reduce(Data()) { aggregated, event in
+					var mutableData = aggregated
+					if case let .standardError(data) = event {
+						mutableData.append(data)
 					}
 
-					return aggregated
+					return mutableData
 				}
 				.single()
 
 			expect(result).notTo(beNil())
 			if let data = result?.value {
-				expect(NSString(data: data, encoding: NSUTF8StringEncoding)).to(equal("stat: not-a-real-file: stat: No such file or directory\n"))
+				expect(String(data: data, encoding: String.Encoding.utf8)).to(equal("stat: not-a-real-file: stat: No such file or directory\n"))
 			}
 		}
 
 		it("should launch a task with standard input") {
 			let strings = [ "foo\n", "bar\n", "buzz\n", "fuzz\n" ]
-			let data = strings.map { $0.dataUsingEncoding(NSUTF8StringEncoding)! }
+			let data = strings.map { $0.data(using: String.Encoding.utf8)! }
 
 			let result = launchTask(Task("/usr/bin/sort"), standardInput: SignalProducer(values: data))
 				.map { event in event.value }
@@ -77,7 +79,7 @@ class TaskSpec: QuickSpec {
 
 			expect(result).notTo(beNil())
 			if let data = result?.value {
-				expect(NSString(data: data, encoding: NSUTF8StringEncoding)).to(equal("bar\nbuzz\nfoo\nfuzz\n"))
+				expect(String(data: data, encoding: String.Encoding.utf8)).to(equal("bar\nbuzz\nfoo\nfuzz\n"))
 			}
 		}
 
@@ -88,7 +90,7 @@ class TaskSpec: QuickSpec {
 
 			expect(result).notTo(beNil())
 			expect(result.error).notTo(beNil())
-			expect(result.error) == TaskError.ShellTaskFailed(task, exitCode: 1, standardError: "stat: not-a-real-file: stat: No such file or directory\n")
+			expect(result.error) == TaskError.shellTaskFailed(task, exitCode: 1, standardError: "stat: not-a-real-file: stat: No such file or directory\n")
 			if let error = result.error {
 				expect(error.description) == "A shell task (/usr/bin/stat not-a-real-file) failed with exit code 1:\nstat: not-a-real-file: stat: No such file or directory\n"
 			}
