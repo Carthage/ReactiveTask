@@ -46,7 +46,7 @@ class TaskSpec: QuickSpec {
 
 			expect(result).notTo(beNil())
 			if let data = result?.value {
-				expect(String(data: data, encoding: String.Encoding.utf8)).to(equal("foobar\n"))
+				expect(String(data: data, encoding: .utf8)).to(equal("foobar\n"))
 			}
 		}
 
@@ -64,13 +64,13 @@ class TaskSpec: QuickSpec {
 
 			expect(result).notTo(beNil())
 			if let data = result?.value {
-				expect(String(data: data, encoding: String.Encoding.utf8)).to(equal("stat: not-a-real-file: stat: No such file or directory\n"))
+				expect(String(data: data, encoding: .utf8)).to(equal("stat: not-a-real-file: stat: No such file or directory\n"))
 			}
 		}
 
 		it("should launch a task with standard input") {
 			let strings = [ "foo\n", "bar\n", "buzz\n", "fuzz\n" ]
-			let data = strings.map { $0.data(using: String.Encoding.utf8)! }
+			let data = strings.map { $0.data(using: .utf8)! }
 
 			let result = launchTask(Task("/usr/bin/sort"), standardInput: SignalProducer(values: data))
 				.map { event in event.value }
@@ -79,7 +79,7 @@ class TaskSpec: QuickSpec {
 
 			expect(result).notTo(beNil())
 			if let data = result?.value {
-				expect(String(data: data, encoding: String.Encoding.utf8)).to(equal("bar\nbuzz\nfoo\nfuzz\n"))
+				expect(String(data: data, encoding: .utf8)).to(equal("bar\nbuzz\nfoo\nfuzz\n"))
 			}
 		}
 

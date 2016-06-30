@@ -245,10 +245,10 @@ public protocol TaskEventType {
 	var value: T? { get }
 
 	/// Maps over the value embedded in a `Success` event.
-	func map<U>( _ transform: @noescape(T) -> U) -> TaskEvent<U>
+	func map<U>(_ transform: @noescape(T) -> U) -> TaskEvent<U>
 
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
-	func producerMap<U, Error>( _ transform: @noescape(T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error>
+	func producerMap<U, Error>(_ transform: @noescape(T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error>
 }
 
 /// Represents events that can occur during the execution of a task that is
@@ -276,7 +276,7 @@ public enum TaskEvent<T>: TaskEventType {
 	}
 
 	/// Maps over the value embedded in a `Success` event.
-	public func map<U>( _ transform: @noescape(T) -> U) -> TaskEvent<U> {
+	public func map<U>(_ transform: @noescape(T) -> U) -> TaskEvent<U> {
 		switch self {
 		case let .launch(task):
 			return .launch(task)
@@ -293,7 +293,7 @@ public enum TaskEvent<T>: TaskEventType {
 	}
 
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
-	public func producerMap<U, Error>( _ transform: @noescape(T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
+	public func producerMap<U, Error>(_ transform: @noescape(T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		switch self {
 		case let .launch(task):
 			return .init(value: .launch(task))
@@ -332,7 +332,7 @@ public func == <T: Equatable>(lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
 extension TaskEvent: CustomStringConvertible {
 	public var description: String {
 		func dataDescription(_ data: Data) -> String {
-			return String(data: data, encoding: String.Encoding.utf8) ?? data.description
+			return String(data: data, encoding: .utf8) ?? data.description
 		}
 
 		switch self {
@@ -494,7 +494,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 							disposable += stdoutAggregated
 								.then(stderrAggregated)
 								.flatMap(.concat) { data -> SignalProducer<TaskEvent<Data>, TaskError> in
-									let errorString = (data.count > 0 ? NSString(data: data, encoding: String.Encoding.utf8.rawValue) as? String : nil)
+									let errorString = (data.count > 0 ? String(data: data, encoding: .utf8) : nil)
 									return SignalProducer(error: .shellTaskFailed(task, exitCode: terminationStatus, standardError: errorString))
 								}
 								.start(observer)
