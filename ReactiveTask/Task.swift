@@ -48,6 +48,13 @@ public struct Task {
 
 extension Task: CustomStringConvertible {
 	public var description: String {
+		let arguments = self.arguments.map { argument -> String in
+			if argument.containsString(" ") {
+				return "\"\(argument)\""
+			} else {
+				return argument
+			}
+		}
 		return "\(launchPath) \(arguments.joinWithSeparator(" "))"
 	}
 }
