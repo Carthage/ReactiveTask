@@ -178,7 +178,7 @@ private final class Pipe {
 				}
 			}
 
-			let _ = disposable.addDisposable {
+			let _ = disposable.add {
 				channel.close(flags: .stop)
 			}
 		}
@@ -209,7 +209,7 @@ private final class Pipe {
 			}
 
 			producer.startWithSignal { signal, producerDisposable in
-				disposable.addDisposable(producerDisposable)
+				disposable.add(producerDisposable)
 
 				signal.observe(Observer(next: { data in
 					let bytes = UnsafeMutablePointer<UInt8>(allocatingCapacity: data.count)
@@ -230,7 +230,7 @@ private final class Pipe {
 				}))
 			}
 
-			let _ = disposable.addDisposable {
+			let _ = disposable.add {
 				channel.close(flags: .stop)
 			}
 		}
@@ -511,13 +511,13 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 						disposable += signalDisposable
 					}
 
-					let _ = disposable.addDisposable {
+					let _ = disposable.add {
 						rawTask.terminate()
 					}
 				}
 			}
 			.startWithSignal { signal, taskDisposable in
-				disposable.addDisposable(taskDisposable)
+				disposable.add(taskDisposable)
 				signal.observe(observer)
 			}
 	}
