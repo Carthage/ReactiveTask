@@ -46,17 +46,20 @@ public struct Task {
 	}
 }
 
+private extension String {
+	var escaped: String {
+		let whitespaceCharacterSet = NSCharacterSet.whitespaceCharacterSet()
+		if rangeOfCharacterFromSet(whitespaceCharacterSet) != nil {
+			return "\"\(self)\""
+		} else {
+			return self
+		}
+	}
+}
+
 extension Task: CustomStringConvertible {
 	public var description: String {
-		let whitespaceCharacterSet = NSCharacterSet.whitespaceCharacterSet()
-		let arguments = self.arguments.map { argument -> String in
-			if argument.rangeOfCharacterFromSet(whitespaceCharacterSet) != nil {
-				return "\"\(argument)\""
-			} else {
-				return argument
-			}
-		}
-		return "\(launchPath) \(arguments.joinWithSeparator(" "))"
+		return "\(launchPath) \(arguments.map { $0.escaped }.joinWithSeparator(" "))"
 	}
 }
 
