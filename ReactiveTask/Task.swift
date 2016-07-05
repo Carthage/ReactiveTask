@@ -215,7 +215,7 @@ private final class Pipe {
 					let bytes = UnsafeMutablePointer<UInt8>(allocatingCapacity: data.count)
 					data.copyBytes(to: bytes, count: data.count)
 					let buffer = UnsafeBufferPointer(start: bytes, count: data.count)
-					let dispatchData = DispatchData(bytes: buffer)
+					let dispatchData = DispatchData(bytesNoCopy: buffer, deallocator: .custom(nil, {}))
 					channel.write(offset: 0, data: dispatchData, queue: self.queue) { (done, data, error) in
 						if error == ECANCELED {
 							observer.sendInterrupted()
