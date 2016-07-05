@@ -48,8 +48,9 @@ public struct Task {
 
 extension Task: CustomStringConvertible {
 	public var description: String {
+		let whitespaceCharacterSet = NSCharacterSet.whitespaceCharacterSet()
 		let arguments = self.arguments.map { argument -> String in
-			if argument.containsString(" ") {
+			if argument.rangeOfCharacterFromSet(whitespaceCharacterSet) != nil {
 				return "\"\(argument)\""
 			} else {
 				return argument
