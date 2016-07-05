@@ -46,22 +46,17 @@ public struct Task {
 	}
 }
 
-private extension CollectionType where Generator.Element == String {
-	func escaped() -> [String] {
-		let whitespaceCharacterSet = NSCharacterSet.whitespaceCharacterSet()
-		return map { string -> String in
-			if string.rangeOfCharacterFromSet(whitespaceCharacterSet) != nil {
-				return "\"\(string)\""
-			} else {
-				return string
-			}
-		}
-	}
-}
-
 extension Task: CustomStringConvertible {
 	public var description: String {
-		return "\(launchPath) \(arguments.escaped().joinWithSeparator(" "))"
+		let whitespaceCharacterSet = NSCharacterSet.whitespaceCharacterSet()
+		let arguments = self.arguments.map { argument -> String in
+			if argument.rangeOfCharacterFromSet(whitespaceCharacterSet) != nil {
+				return "\"\(argument)\""
+			} else {
+				return argument
+			}
+		}
+		return "\(launchPath) \(arguments.joinWithSeparator(" "))"
 	}
 }
 
