@@ -48,8 +48,7 @@ public struct Task {
 
 private extension String {
 	var escaped: String {
-		let whitespaceCharacterSet = NSCharacterSet.whitespaceCharacterSet()
-		if rangeOfCharacterFromSet(whitespaceCharacterSet) != nil {
+		if rangeOfCharacterFromSet(.whitespaceCharacterSet()) != nil {
 			return "\"\(self)\""
 		} else {
 			return self
