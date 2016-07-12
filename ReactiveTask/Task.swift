@@ -125,9 +125,9 @@ private final class Pipe {
 	class func create(_ queue: DispatchQueue, _ group: DispatchGroup) -> Result<Pipe, TaskError> {
 		var fildes: [Int32] = [ 0, 0 ]
 		if pipe(&fildes) == 0 {
-			return .Success(self.init(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
+			return .success(self.init(readFD: fildes[0], writeFD: fildes[1], queue: queue, group: group))
 		} else {
-			return .Failure(.posixError(errno))
+			return .failure(.posixError(errno))
 		}
 	}
 
@@ -409,14 +409,14 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 
 		if let input = standardInput {
 			switch Pipe.create(queue, group) {
-			case let .Success(pipe):
+			case let .success(pipe):
 				rawTask.standardInput = pipe.readHandle
 
 				stdinProducer = pipe.writeDataFromProducer(input).on(started: {
 					close(pipe.readFD)
 				})
 
-			case let .Failure(error):
+			case let .failure(error):
 				observer.sendFailed(error)
 				return
 			}
