@@ -46,9 +46,19 @@ public struct Task {
 	}
 }
 
+private extension String {
+	var escaped: String {
+		if rangeOfCharacter(from: .whitespaces) != nil {
+			return "\"\(self)\""
+		} else {
+			return self
+		}
+	}
+}
+
 extension Task: CustomStringConvertible {
 	public var description: String {
-		return "\(launchPath) \(arguments.joined(separator: " "))"
+		return "\(launchPath) \(arguments.map { $0.escaped }.joined(separator: " "))"
 	}
 }
 
