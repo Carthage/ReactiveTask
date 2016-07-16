@@ -15,7 +15,8 @@ notifications:
 before_deploy:
   - brew update
   - brew outdated carthage || brew upgrade carthage
-  - carthage build --no-skip-current
+  - carthage version
+  - carthage build --no-skip-current --platform mac
   - carthage archive ReactiveTask
 deploy:
   provider: releases
