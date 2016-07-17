@@ -451,7 +451,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 				}
 
 				return SignalProducer { observer, disposable in
-					func startAggregating(producer: Pipe.ReadProducer) -> Pipe.ReadProducer {
+					func startAggregating(producer: Pipe.ReadProducer, chunk: (NSData) -> TaskEvent<NSData>) -> Pipe.ReadProducer {
 						let aggregated = MutableProperty<Aggregation?>(nil)
 
 						producer.startWithSignal { signal, signalDisposable in
@@ -459,7 +459,7 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 
 							let aggregate = NSMutableData()
 							signal.observe(Observer(next: { data in
-								observer.sendNext(.StandardOutput(data))
+								observer.sendNext(chunk(data))
 								aggregate.appendData(data)
 							}, failed: { error in
 								observer.sendFailed(error)
@@ -476,8 +476,8 @@ public func launchTask(task: Task, standardInput: SignalProducer<NSData, NoError
 							.flatMap(.Concat) { $0.producer }
 					}
 
-					let stdoutAggregated = startAggregating(stdoutProducer)
-					let stderrAggregated = startAggregating(stderrProducer)
+					let stdoutAggregated = startAggregating(stdoutProducer, chunk: TaskEvent.StandardOutput)
+					let stderrAggregated = startAggregating(stderrProducer, chunk: TaskEvent.StandardError)
 
 					rawTask.standardOutput = stdoutPipe.writeHandle
 					rawTask.standardError = stderrPipe.writeHandle
