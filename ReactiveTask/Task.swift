@@ -397,7 +397,6 @@ extension Signal where Value: TaskEventType {
 ///
 /// - Returns: A producer that will launch the task when started, then send
 /// `TaskEvent`s as execution proceeds.
-//TODO: Swift 3 API guidelines?
 public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError>? = nil) -> SignalProducer<TaskEvent<Data>, TaskError> {
 	return SignalProducer { observer, disposable in
 		let queue = DispatchQueue(label: task.description, attributes: .serial)
@@ -457,7 +456,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 				}
 
 				return SignalProducer { observer, disposable in
-					func startAggregating(_ producer: Pipe.ReadProducer) -> Pipe.ReadProducer {
+					func startAggregating(producer: Pipe.ReadProducer, chunk: (Data) -> TaskEvent<Data>) -> Pipe.ReadProducer {
 						let aggregated = MutableProperty<Aggregation?>(nil)
 
 						producer.startWithSignal { signal, signalDisposable in
@@ -465,7 +464,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 
 							var aggregate = Data()
 							signal.observe(Observer(next: { data in
-								observer.sendNext(.standardOutput(data))
+								observer.sendNext(chunk(data))
 								aggregate.append(data)
 							}, failed: { error in
 								observer.sendFailed(error)
@@ -482,8 +481,8 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 							.flatMap(.concat) { $0.producer }
 					}
 
-					let stdoutAggregated = startAggregating(stdoutProducer)
-					let stderrAggregated = startAggregating(stderrProducer)
+					let stdoutAggregated = startAggregating(producer: stdoutProducer, chunk: TaskEvent.standardOutput)
+					let stderrAggregated = startAggregating(producer: stderrProducer, chunk: TaskEvent.standardError)
 
 					rawTask.standardOutput = stdoutPipe.writeHandle
 					rawTask.standardError = stderrPipe.writeHandle

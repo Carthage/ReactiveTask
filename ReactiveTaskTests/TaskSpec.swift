@@ -51,21 +51,19 @@ class TaskSpec: QuickSpec {
 		}
 
 		it("should launch a task that writes to stderr") {
+			var aggregated = Data()
 			let result = launchTask(Task("/usr/bin/stat", arguments: [ "not-a-real-file" ]))
-				.reduce(Data()) { aggregated, event in
-					var mutableData = aggregated
+				.reduce(aggregated) { _, event in
 					if case let .standardError(data) = event {
-						mutableData.append(data)
+						aggregated.append(data)
 					}
-
-					return mutableData
+					return aggregated
 				}
 				.single()
 
 			expect(result).notTo(beNil())
-			if let data = result?.value {
-				expect(String(data: data, encoding: .utf8)).to(equal("stat: not-a-real-file: stat: No such file or directory\n"))
-			}
+			expect(result?.error).notTo(beNil())
+			expect(String(data: aggregated, encoding: .utf8)).to(equal("stat: not-a-real-file: stat: No such file or directory\n"))
 		}
 
 		it("should launch a task with standard input") {
