@@ -171,7 +171,7 @@ private final class Pipe {
 			channel.setLimit(lowWater: 1)
 			channel.read(offset: 0, length: Int.max, queue: self.queue) { (done, dispatchData, error) in
 				if let dispatchData = dispatchData {
-					let bytes = UnsafeMutablePointer<UInt8>(allocatingCapacity: dispatchData.count)
+					let bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: dispatchData.count)
 					dispatchData.copyBytes(to: bytes, count: dispatchData.count)
 					let data = Data(bytes: bytes, count: dispatchData.count)
 					observer.sendNext(data)
@@ -222,7 +222,7 @@ private final class Pipe {
 				disposable.add(producerDisposable)
 
 				signal.observe(Observer(next: { data in
-					let bytes = UnsafeMutablePointer<UInt8>(allocatingCapacity: data.count)
+					let bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: data.count)
 					data.copyBytes(to: bytes, count: data.count)
 					let buffer = UnsafeBufferPointer(start: bytes, count: data.count)
 					let dispatchData = DispatchData(bytesNoCopy: buffer, deallocator: .custom(nil, {}))
@@ -399,7 +399,7 @@ extension Signal where Value: TaskEventType {
 /// `TaskEvent`s as execution proceeds.
 public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError>? = nil) -> SignalProducer<TaskEvent<Data>, TaskError> {
 	return SignalProducer { observer, disposable in
-		let queue = DispatchQueue(label: task.description, attributes: .serial)
+		let queue = DispatchQueue(label: task.description, attributes: [])
 		let group = Task.group
 
 		let rawTask = Foundation.Task()

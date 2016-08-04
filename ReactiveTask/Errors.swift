@@ -10,7 +10,7 @@ import Foundation
 import ReactiveCocoa
 
 /// An error originating from ReactiveTask.
-public enum TaskError: ErrorProtocol, Equatable {
+public enum TaskError: Error, Equatable {
 	/// A shell task exited unsuccessfully.
 	case shellTaskFailed(Task, exitCode: Int32, standardError: String?)
 
