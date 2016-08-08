@@ -222,10 +222,11 @@ private final class Pipe {
 				disposable.add(producerDisposable)
 
 				signal.observe(Observer(next: { data in
-					let bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: data.count)
-					data.copyBytes(to: bytes, count: data.count)
-					let buffer = UnsafeBufferPointer(start: bytes, count: data.count)
-					let dispatchData = DispatchData(bytesNoCopy: buffer, deallocator: .custom(nil, {}))
+					let dispatchData = data.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) -> DispatchData in
+						let buffer = UnsafeBufferPointer(start: bytes, count: data.count)
+						return DispatchData(bytesNoCopy: buffer, deallocator: .custom(nil, {}))
+					}
+					
 					channel.write(offset: 0, data: dispatchData, queue: self.queue) { (done, data, error) in
 						if error == ECANCELED {
 							observer.sendInterrupted()
