@@ -72,7 +72,7 @@ class TaskSpec: QuickSpec {
 
 			let result = launchTask(Task("/usr/bin/sort"), standardInput: SignalProducer(values: data))
 				.map { event in event.value }
-				.ignoreNil()
+				.skipNil()
 				.single()
 
 			expect(result).notTo(beNil())
