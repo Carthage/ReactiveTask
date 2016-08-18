@@ -38,7 +38,7 @@ public struct Task {
 	}
 	
 	/// A GCD group which to wait completion
-	private static let group = DispatchGroup()
+	fileprivate static let group = DispatchGroup()
 	
 	/// wait for all task termination
 	public static func waitForAllTaskTermination() {
@@ -269,10 +269,10 @@ public protocol TaskEventType {
 	var value: T? { get }
 
 	/// Maps over the value embedded in a `Success` event.
-	func map<U>(_ transform: @noescape(T) -> U) -> TaskEvent<U>
+	func map<U>(_ transform: (T) -> U) -> TaskEvent<U>
 
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
-	func producerMap<U, Error>(_ transform: @noescape(T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error>
+	func producerMap<U, Error>(_ transform: (T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error>
 }
 
 /// Represents events that can occur during the execution of a task that is
@@ -300,7 +300,7 @@ public enum TaskEvent<T>: TaskEventType {
 	}
 
 	/// Maps over the value embedded in a `Success` event.
-	public func map<U>(_ transform: @noescape(T) -> U) -> TaskEvent<U> {
+	public func map<U>(_ transform: (T) -> U) -> TaskEvent<U> {
 		switch self {
 		case let .launch(task):
 			return .launch(task)
@@ -317,7 +317,7 @@ public enum TaskEvent<T>: TaskEventType {
 	}
 
 	/// Convenience operator for mapping TaskEvents to SignalProducers.
-	public func producerMap<U, Error>(_ transform: @noescape(T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
+	public func producerMap<U, Error>(_ transform: (T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		switch self {
 		case let .launch(task):
 			return .init(value: .launch(task))
@@ -377,7 +377,7 @@ extension TaskEvent: CustomStringConvertible {
 
 extension SignalProducer where Value: TaskEventType {
 	/// Maps the values inside a stream of TaskEvents into new SignalProducers.
-	public func flatMapTaskEvents<U>(_ strategy: FlattenStrategy, transform: (Value.T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
+	public func flatMapTaskEvents<U>(_ strategy: FlattenStrategy, transform: @escaping (Value.T) -> SignalProducer<U, Error>) -> SignalProducer<TaskEvent<U>, Error> {
 		return self.flatMap(strategy) { taskEvent in
 			return taskEvent.producerMap(transform)
 		}
@@ -416,16 +416,16 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 		let queue = DispatchQueue(label: task.description, attributes: [])
 		let group = Task.group
 
-		let rawTask = Foundation.Task()
-		rawTask.launchPath = task.launchPath
-		rawTask.arguments = task.arguments
+		let process = Process()
+		process.launchPath = task.launchPath
+		process.arguments = task.arguments
 
 		if let cwd = task.workingDirectoryPath {
-			rawTask.currentDirectoryPath = cwd
+			process.currentDirectoryPath = cwd
 		}
 
 		if let env = task.environment {
-			rawTask.environment = env
+			process.environment = env
 		}
 
 		var stdinProducer: SignalProducer<(), TaskError> = .empty
@@ -433,7 +433,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 		if let input = standardInput {
 			switch Pipe.create(queue, group) {
 			case let .success(pipe):
-				rawTask.standardInput = pipe.readHandle
+				process.standardInput = pipe.readHandle
 
 				stdinProducer = pipe.writeDataFromProducer(input).on(started: {
 					close(pipe.readFD)
@@ -470,7 +470,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 				}
 
 				return SignalProducer { observer, disposable in
-					func startAggregating(producer: Pipe.ReadProducer, chunk: (Data) -> TaskEvent<Data>) -> Pipe.ReadProducer {
+					func startAggregating(producer: Pipe.ReadProducer, chunk: @escaping (Data) -> TaskEvent<Data>) -> Pipe.ReadProducer {
 						let aggregated = MutableProperty<Aggregation?>(nil)
 
 						producer.startWithSignal { signal, signalDisposable in
@@ -498,11 +498,11 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 					let stdoutAggregated = startAggregating(producer: stdoutProducer, chunk: TaskEvent.standardOutput)
 					let stderrAggregated = startAggregating(producer: stderrProducer, chunk: TaskEvent.standardError)
 
-					rawTask.standardOutput = stdoutPipe.writeHandle
-					rawTask.standardError = stderrPipe.writeHandle
+					process.standardOutput = stdoutPipe.writeHandle
+					process.standardError = stderrPipe.writeHandle
 
 					group.enter()
-					rawTask.terminationHandler = { nstask in
+					process.terminationHandler = { nstask in
 						let terminationStatus = nstask.terminationStatus
 						if terminationStatus == EXIT_SUCCESS {
 							// Wait for stderr to finish, then pass
@@ -526,7 +526,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 					}
 					
 					observer.sendNext(.launch(task))
-					rawTask.launch()
+					process.launch()
 					close(stdoutPipe.writeFD)
 					close(stderrPipe.writeFD)
 
@@ -535,7 +535,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 					}
 
 					let _ = disposable.add {
-						rawTask.terminate()
+						process.terminate()
 					}
 				}
 			}

@@ -1,5 +1,5 @@
-github "andersio/Nimble" "7c0762319cd5c902a85b92722a0659cc33cd6338"
+github "ikesyo/Nimble" "4caecb3cef0c9a2973c598b99e1495009faf57b1"
 github "norio-nomura/Quick" "eaf60d980d88ffefd8c3a7515f53547453d5938b"
-github "antitypical/Result" "3.0.0-alpha.2"
+github "antitypical/Result" "3.0.0-alpha.3"
 github "jspahrsummers/xcconfigs" "1ef97639ffbe041da0b1392b2114fa19b922a7a1"
-github "ReactiveCocoa/ReactiveCocoa" "5d97c0509992f72a3cfe24a5b9ed74326325c0bc"
+github "ReactiveCocoa/ReactiveCocoa" "736b1d8957b875f66f235f8e8defa9f793771e5a"
