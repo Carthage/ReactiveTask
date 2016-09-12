@@ -10,18 +10,18 @@ import Foundation
 import ReactiveCocoa
 
 /// An error originating from ReactiveTask.
-public enum TaskError: ErrorType, Equatable {
+public enum TaskError: Error, Equatable {
 	/// A shell task exited unsuccessfully.
-	case ShellTaskFailed(Task, exitCode: Int32, standardError: String?)
+	case shellTaskFailed(Task, exitCode: Int32, standardError: String?)
 
 	/// An error was returned from a POSIX API.
-	case POSIXError(Int32)
+	case posixError(Int32)
 }
 
 extension TaskError: CustomStringConvertible {
 	public var description: String {
 		switch self {
-		case let .ShellTaskFailed(task, exitCode, standardError):
+		case let .shellTaskFailed(task, exitCode, standardError):
 			var description = "A shell task (\(task)) failed with exit code \(exitCode)"
 			if let standardError = standardError {
 				description += ":\n\(standardError)"
@@ -29,7 +29,7 @@ extension TaskError: CustomStringConvertible {
 
 			return description
 
-		case let .POSIXError(code):
+		case let .posixError(code):
 			return NSError(domain: NSPOSIXErrorDomain, code: Int(code), userInfo: nil).description
 		}
 	}
@@ -37,10 +37,10 @@ extension TaskError: CustomStringConvertible {
 
 public func == (lhs: TaskError, rhs: TaskError) -> Bool {
 	switch (lhs, rhs) {
-	case let (.ShellTaskFailed(lhsTask, lhsCode, lhsErr), .ShellTaskFailed(rhsTask, rhsCode, rhsErr)):
+	case let (.shellTaskFailed(lhsTask, lhsCode, lhsErr), .shellTaskFailed(rhsTask, rhsCode, rhsErr)):
 		return lhsTask == rhsTask && lhsCode == rhsCode && lhsErr == rhsErr
 
-	case let (.POSIXError(lhsCode), .POSIXError(rhsCode)):
+	case let (.posixError(lhsCode), .posixError(rhsCode)):
 		return lhsCode == rhsCode
 
 	default:

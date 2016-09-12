@@ -3,13 +3,13 @@ ReactiveTask is a Swift framework for launching shell tasks (processes), built u
 
 ```swift
 let strings = [ "foo\n", "bar\n", "buzz\n", "fuzz\n" ]
-let input = SignalProducer<NSData, NoError>(values: strings.map { $0.dataUsingEncoding(NSUTF8StringEncoding)! })
+let input = SignalProducer<Data, NoError>(values: strings.map { $0.data(using: .utf8)! })
 let task = Task("/usr/bin/sort")
 
 // Run the task, ignoring the output, and do something with the final result.
 let result: Result<String, TaskError>? = launchTask(task, standardInput: input)
     .ignoreTaskData()
-    .map { String(data: $0, encoding: NSUTF8StringEncoding) }
+    .map { String(data: $0, encoding: .utf8) }
     .ignoreNil()
     .single()
 print("Output of `\(task)`: \(result?.value ?? "")")
@@ -17,21 +17,21 @@ print("Output of `\(task)`: \(result?.value ?? "")")
 // Start the task and print all the events, which includes all the output
 // that was received.
 launchTask(task, standardInput: input)
-    .flatMapTaskEvents(.Concat) { data in
-        return SignalProducer(value: String(data: data, encoding: NSUTF8StringEncoding))
+    .flatMapTaskEvents(.concat) { data in
+        return SignalProducer(value: String(data: data, encoding: .utf8))
     }
     .startWithNext { (event: TaskEvent) in
         switch event {
-        case let .Launch(task):
+        case let .launch(task):
             print("launched task: \(task)")
 
-        case let .StandardError(data):
+        case let .standardError(data):
             print("stderr: \(data)")
 
-        case let .StandardOutput(data):
+        case let .standardOutput(data):
             print("stdout: \(data)")
 
-        case let .Success(string):
+        case let .success(string):
             print("value: \(string ?? "")")
         }
     }
