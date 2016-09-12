@@ -56,14 +56,6 @@ private extension String {
 	}
 }
 
-//private extension Data {
-//	init(dispatchData: DispatchData) {
-//		self = dispatchData.withUnsafeBytes { bytes in
-//			return Data(bytes: bytes, count: dispatchData.count)
-//		}
-//	}
-//}
-
 extension Task: CustomStringConvertible {
 	public var description: String {
 		return "\(launchPath) \(arguments.map { $0.escaped }.joined(separator: " "))"
@@ -179,13 +171,11 @@ private final class Pipe {
 			channel.setLimit(lowWater: 1)
 			channel.read(offset: 0, length: Int.max, queue: self.queue) { (done, dispatchData, error) in
 				if let dispatchData = dispatchData {
-//					let data = dispatchData.withUnsafeBytes { bytes in
-//						return Data(bytes: bytes, count: dispatchData.count)
-//					}
-					
 					let bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: dispatchData.count)
 					dispatchData.copyBytes(to: bytes, count: dispatchData.count)
 					let data = Data(bytes: bytes, count: dispatchData.count)
+					bytes.deinitialize(count: dispatchData.count)
+					bytes.deallocate(capacity: dispatchData.count)
 					
 					observer.sendNext(data)
 				}
