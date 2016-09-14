@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import ReactiveCocoa
 
 /// An error originating from ReactiveTask.
 public enum TaskError: Error, Equatable {

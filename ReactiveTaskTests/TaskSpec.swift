@@ -9,7 +9,7 @@
 import Foundation
 import Nimble
 import Quick
-import ReactiveCocoa
+import ReactiveSwift
 import ReactiveTask
 import Result
 
