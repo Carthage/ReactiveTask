@@ -1,5 +1,5 @@
 # ReactiveTask
-ReactiveTask is a Swift framework for launching shell tasks (processes), built using [ReactiveCocoa](https://github.com/ReactiveCocoa/ReactiveCocoa).
+ReactiveTask is a Swift framework for launching shell tasks (processes), built using [ReactiveSwift](https://github.com/ReactiveCocoa/ReactiveSwift).
 
 ```swift
 let strings = [ "foo\n", "bar\n", "buzz\n", "fuzz\n" ]
