@@ -20,7 +20,7 @@ class TaskSpec: QuickSpec {
 
 			let task = Task("/usr/bin/true")
 			let result = launchTask(task)
-				.on(next: { event in
+				.on(value: { event in
 					if case let .launch(launched) = event {
 						isLaunched = true
 						expect(launched) == task
