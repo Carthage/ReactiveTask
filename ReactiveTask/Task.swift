@@ -161,7 +161,7 @@ private final class Pipe {
 				} else if error == ECANCELED {
 					observer.sendInterrupted()
 				} else {
-					observer.sendFailed(.posixError(error))
+					observer.send(error: .posixError(error))
 				}
 
 				close(self.readFD)
@@ -177,13 +177,13 @@ private final class Pipe {
 					bytes.deinitialize(count: dispatchData.count)
 					bytes.deallocate(capacity: dispatchData.count)
 					
-					observer.sendNext(data)
+					observer.send(value: data)
 				}
 
 				if error == ECANCELED {
 					observer.sendInterrupted()
 				} else if error != 0 {
-					observer.sendFailed(.posixError(error))
+					observer.send(error: .posixError(error))
 				}
 
 				if done {
@@ -214,7 +214,7 @@ private final class Pipe {
 				} else if error == ECANCELED {
 					observer.sendInterrupted()
 				} else {
-					observer.sendFailed(.posixError(error))
+					observer.send(error: .posixError(error))
 				}
 
 				close(self.writeFD)
@@ -224,7 +224,7 @@ private final class Pipe {
 			producer.startWithSignal { signal, producerDisposable in
 				disposable.add(producerDisposable)
 
-				signal.observe(Observer(next: { data in
+				signal.observe(Observer(value: { data in
 					let dispatchData = data.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) -> DispatchData in
 						let buffer = UnsafeBufferPointer(start: bytes, count: data.count)
 						return DispatchData(bytes: buffer)
@@ -234,7 +234,7 @@ private final class Pipe {
 						if error == ECANCELED {
 							observer.sendInterrupted()
 						} else if error != 0 {
-							observer.sendFailed(.posixError(error))
+							observer.send(error: .posixError(error))
 						}
 					}
 				}, completed: {
@@ -430,7 +430,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 				})
 
 			case let .failure(error):
-				observer.sendFailed(error)
+				observer.send(error: error)
 				return
 			}
 		}
@@ -467,11 +467,11 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 							disposable += signalDisposable
 
 							var aggregate = Data()
-							signal.observe(Observer(next: { data in
-								observer.sendNext(chunk(data))
+							signal.observe(Observer(value: { data in
+								observer.send(value: chunk(data))
 								aggregate.append(data)
 							}, failed: { error in
-								observer.sendFailed(error)
+								observer.send(error: error)
 								aggregated.value = .failed(error)
 							}, completed: {
 								aggregated.value = .value(aggregate)
@@ -515,7 +515,7 @@ public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError
 						group.leave()
 					}
 					
-					observer.sendNext(.launch(task))
+					observer.send(value: .launch(task))
 					process.launch()
 					close(stdoutPipe.writeFD)
 					close(stderrPipe.writeFD)
