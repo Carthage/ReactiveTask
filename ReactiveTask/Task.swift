@@ -392,146 +392,147 @@ extension Signal where Value: TaskEventType {
 	}
 }
 
-/// Launches a new shell task.
-///
-/// - Parameters:
-///   - task:          The task to launch.
-///   - standardInput: Data to stream to standard input of the launched process. If nil, stdin will
-///                    be inherited from the parent process.
-///
-/// - Returns: A producer that will launch the task when started, then send
-/// `TaskEvent`s as execution proceeds.
-public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError>? = nil) -> SignalProducer<TaskEvent<Data>, TaskError> {
-	return SignalProducer { observer, disposable in
-		let queue = DispatchQueue(label: task.description, attributes: [])
-		let group = Task.group
+extension Task {
+	/// Launches a new shell task.
+	///
+	/// - Parameters:
+	///   - standardInput: Data to stream to standard input of the launched process. If nil, stdin will
+	///                    be inherited from the parent process.
+	///
+	/// - Returns: A producer that will launch the receiver when started, then send
+	///            `TaskEvent`s as execution proceeds.
+	public func launch(standardInput: SignalProducer<Data, NoError>? = nil) -> SignalProducer<TaskEvent<Data>, TaskError> {
+		return SignalProducer { observer, disposable in
+			let queue = DispatchQueue(label: self.description, attributes: [])
+			let group = Task.group
 
-		let process = Process()
-		process.launchPath = task.launchPath
-		process.arguments = task.arguments
+			let process = Process()
+			process.launchPath = self.launchPath
+			process.arguments = self.arguments
 
-		if let cwd = task.workingDirectoryPath {
-			process.currentDirectoryPath = cwd
-		}
-
-		if let env = task.environment {
-			process.environment = env
-		}
-
-		var stdinProducer: SignalProducer<(), TaskError> = .empty
-
-		if let input = standardInput {
-			switch Pipe.create(queue, group) {
-			case let .success(pipe):
-				process.standardInput = pipe.readHandle
-
-				stdinProducer = pipe.writeDataFromProducer(input).on(started: {
-					close(pipe.readFD)
-				})
-
-			case let .failure(error):
-				observer.send(error: error)
-				return
+			if let cwd = self.workingDirectoryPath {
+				process.currentDirectoryPath = cwd
 			}
-		}
 
-		SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
-			.flatMap(.merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<Data>, TaskError> in
-				let stdoutProducer = stdoutPipe.transferReadsToProducer()
-				let stderrProducer = stderrPipe.transferReadsToProducer()
+			if let env = self.environment {
+				process.environment = env
+			}
 
-				enum Aggregation {
-					case value(Data)
-					case failed(TaskError)
-					case interrupted
+			var stdinProducer: SignalProducer<(), TaskError> = .empty
 
-					var producer: Pipe.ReadProducer {
-						switch self {
-						case let .value(data):
-							return .init(value: data)
-						case let .failed(error):
-							return .init(error: error)
-						case .interrupted:
-							return SignalProducer { observer, _ in
-								observer.sendInterrupted()
+			if let input = standardInput {
+				switch Pipe.create(queue, group) {
+				case let .success(pipe):
+					process.standardInput = pipe.readHandle
+
+					stdinProducer = pipe.writeDataFromProducer(input).on(started: {
+						close(pipe.readFD)
+					})
+
+				case let .failure(error):
+					observer.send(error: error)
+					return
+				}
+			}
+
+			SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
+				.flatMap(.merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<Data>, TaskError> in
+					let stdoutProducer = stdoutPipe.transferReadsToProducer()
+					let stderrProducer = stderrPipe.transferReadsToProducer()
+
+					enum Aggregation {
+						case value(Data)
+						case failed(TaskError)
+						case interrupted
+
+						var producer: Pipe.ReadProducer {
+							switch self {
+							case let .value(data):
+								return .init(value: data)
+							case let .failed(error):
+								return .init(error: error)
+							case .interrupted:
+								return SignalProducer { observer, _ in
+									observer.sendInterrupted()
+								}
 							}
 						}
 					}
-				}
 
-				return SignalProducer { observer, disposable in
-					func startAggregating(producer: Pipe.ReadProducer, chunk: @escaping (Data) -> TaskEvent<Data>) -> Pipe.ReadProducer {
-						let aggregated = MutableProperty<Aggregation?>(nil)
+					return SignalProducer { observer, disposable in
+						func startAggregating(producer: Pipe.ReadProducer, chunk: @escaping (Data) -> TaskEvent<Data>) -> Pipe.ReadProducer {
+							let aggregated = MutableProperty<Aggregation?>(nil)
 
-						producer.startWithSignal { signal, signalDisposable in
+							producer.startWithSignal { signal, signalDisposable in
+								disposable += signalDisposable
+
+								var aggregate = Data()
+								signal.observe(Observer(value: { data in
+									observer.send(value: chunk(data))
+									aggregate.append(data)
+								}, failed: { error in
+									observer.send(error: error)
+									aggregated.value = .failed(error)
+								}, completed: {
+									aggregated.value = .value(aggregate)
+								}, interrupted: {
+									aggregated.value = .interrupted
+								}))
+							}
+
+							return aggregated.producer
+								.skipNil()
+								.flatMap(.concat) { $0.producer }
+						}
+
+						let stdoutAggregated = startAggregating(producer: stdoutProducer, chunk: TaskEvent.standardOutput)
+						let stderrAggregated = startAggregating(producer: stderrProducer, chunk: TaskEvent.standardError)
+
+						process.standardOutput = stdoutPipe.writeHandle
+						process.standardError = stderrPipe.writeHandle
+
+						group.enter()
+						process.terminationHandler = { nstask in
+							let terminationStatus = nstask.terminationStatus
+							if terminationStatus == EXIT_SUCCESS {
+								// Wait for stderr to finish, then pass
+								// through stdout.
+								disposable += stderrAggregated
+									.then(stdoutAggregated)
+									.map(TaskEvent.success)
+									.start(observer)
+							} else {
+								// Wait for stdout to finish, then pass
+								// through stderr.
+								disposable += stdoutAggregated
+									.then(stderrAggregated)
+									.flatMap(.concat) { data -> SignalProducer<TaskEvent<Data>, TaskError> in
+										let errorString = (data.count > 0 ? String(data: data, encoding: .utf8) : nil)
+										return SignalProducer(error: .shellTaskFailed(self, exitCode: terminationStatus, standardError: errorString))
+									}
+									.start(observer)
+							}
+							group.leave()
+						}
+						
+						observer.send(value: .launch(self))
+						process.launch()
+						close(stdoutPipe.writeFD)
+						close(stderrPipe.writeFD)
+
+						stdinProducer.startWithSignal { signal, signalDisposable in
 							disposable += signalDisposable
-
-							var aggregate = Data()
-							signal.observe(Observer(value: { data in
-								observer.send(value: chunk(data))
-								aggregate.append(data)
-							}, failed: { error in
-								observer.send(error: error)
-								aggregated.value = .failed(error)
-							}, completed: {
-								aggregated.value = .value(aggregate)
-							}, interrupted: {
-								aggregated.value = .interrupted
-							}))
 						}
 
-						return aggregated.producer
-							.skipNil()
-							.flatMap(.concat) { $0.producer }
-					}
-
-					let stdoutAggregated = startAggregating(producer: stdoutProducer, chunk: TaskEvent.standardOutput)
-					let stderrAggregated = startAggregating(producer: stderrProducer, chunk: TaskEvent.standardError)
-
-					process.standardOutput = stdoutPipe.writeHandle
-					process.standardError = stderrPipe.writeHandle
-
-					group.enter()
-					process.terminationHandler = { nstask in
-						let terminationStatus = nstask.terminationStatus
-						if terminationStatus == EXIT_SUCCESS {
-							// Wait for stderr to finish, then pass
-							// through stdout.
-							disposable += stderrAggregated
-								.then(stdoutAggregated)
-								.map(TaskEvent.success)
-								.start(observer)
-						} else {
-							// Wait for stdout to finish, then pass
-							// through stderr.
-							disposable += stdoutAggregated
-								.then(stderrAggregated)
-								.flatMap(.concat) { data -> SignalProducer<TaskEvent<Data>, TaskError> in
-									let errorString = (data.count > 0 ? String(data: data, encoding: .utf8) : nil)
-									return SignalProducer(error: .shellTaskFailed(task, exitCode: terminationStatus, standardError: errorString))
-								}
-								.start(observer)
+						let _ = disposable.add {
+							process.terminate()
 						}
-						group.leave()
-					}
-					
-					observer.send(value: .launch(task))
-					process.launch()
-					close(stdoutPipe.writeFD)
-					close(stderrPipe.writeFD)
-
-					stdinProducer.startWithSignal { signal, signalDisposable in
-						disposable += signalDisposable
-					}
-
-					let _ = disposable.add {
-						process.terminate()
 					}
 				}
-			}
-			.startWithSignal { signal, taskDisposable in
-				disposable.add(taskDisposable)
-				signal.observe(observer)
-			}
+				.startWithSignal { signal, taskDisposable in
+					disposable.add(taskDisposable)
+					signal.observe(observer)
+				}
+		}
 	}
 }
