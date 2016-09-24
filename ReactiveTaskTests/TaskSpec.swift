@@ -19,7 +19,7 @@ class TaskSpec: QuickSpec {
 			var isLaunched: Bool = false
 
 			let task = Task("/usr/bin/true")
-			let result = launchTask(task)
+			let result = task.launch()
 				.on(value: { event in
 					if case let .launch(launched) = event {
 						isLaunched = true
@@ -33,7 +33,7 @@ class TaskSpec: QuickSpec {
 		}
 
 		it("should launch a task that writes to stdout") {
-			let result = launchTask(Task("/bin/echo", arguments: [ "foobar" ]))
+			let result = Task("/bin/echo", arguments: [ "foobar" ]).launch()
 				.reduce(Data()) { aggregated, event in
 					var mutableData = aggregated
 					if case let .standardOutput(data) = event {
@@ -52,7 +52,7 @@ class TaskSpec: QuickSpec {
 
 		it("should launch a task that writes to stderr") {
 			var aggregated = Data()
-			let result = launchTask(Task("/usr/bin/stat", arguments: [ "not-a-real-file" ]))
+			let result = Task("/usr/bin/stat", arguments: [ "not-a-real-file" ]).launch()
 				.reduce(aggregated) { _, event in
 					if case let .standardError(data) = event {
 						aggregated.append(data)
@@ -70,7 +70,7 @@ class TaskSpec: QuickSpec {
 			let strings = [ "foo\n", "bar\n", "buzz\n", "fuzz\n" ]
 			let data = strings.map { $0.data(using: .utf8)! }
 
-			let result = launchTask(Task("/usr/bin/sort"), standardInput: SignalProducer(values: data))
+			let result = Task("/usr/bin/sort").launch(standardInput: SignalProducer(values: data))
 				.map { event in event.value }
 				.skipNil()
 				.single()
@@ -83,7 +83,7 @@ class TaskSpec: QuickSpec {
 
 		it("should error correctly") {
 			let task = Task("/usr/bin/stat", arguments: [ "not-a-real-file" ])
-			let result = launchTask(task)
+			let result = task.launch()
 				.wait()
 
 			expect(result).notTo(beNil())

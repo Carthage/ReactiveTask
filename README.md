@@ -7,7 +7,7 @@ let input = SignalProducer<Data, NoError>(values: strings.map { $0.data(using: .
 let task = Task("/usr/bin/sort")
 
 // Run the task, ignoring the output, and do something with the final result.
-let result: Result<String, TaskError>? = launchTask(task, standardInput: input)
+let result: Result<String, TaskError>? = task.launch(standardInput: input)
     .ignoreTaskData()
     .map { String(data: $0, encoding: .utf8) }
     .ignoreNil()
@@ -16,7 +16,7 @@ print("Output of `\(task)`: \(result?.value ?? "")")
 
 // Start the task and print all the events, which includes all the output
 // that was received.
-launchTask(task, standardInput: input)
+task.launch(standardInput: input)
     .flatMapTaskEvents(.concat) { data in
         return SignalProducer(value: String(data: data, encoding: .utf8))
     }
