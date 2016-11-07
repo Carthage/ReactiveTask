@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CD52F6441DD0411100B2F764 /* Availability.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD52F6431DD0411100B2F764 /* Availability.swift */; };
 		D02130921AF87B6500B9EC20 /* Result.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D02130911AF87B6500B9EC20 /* Result.framework */; };
 		D0BFEA5E1A2D1E5E00E23194 /* ReactiveTask.h in Headers */ = {isa = PBXBuildFile; fileRef = D0BFEA5D1A2D1E5E00E23194 /* ReactiveTask.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D0BFEA641A2D1E5E00E23194 /* ReactiveTask.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA581A2D1E5E00E23194 /* ReactiveTask.framework */; };
@@ -29,6 +30,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		CD52F6431DD0411100B2F764 /* Availability.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Availability.swift; sourceTree = "<group>"; };
 		D02130911AF87B6500B9EC20 /* Result.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Result.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA581A2D1E5E00E23194 /* ReactiveTask.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ReactiveTask.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA5C1A2D1E5E00E23194 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -108,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				D0BFEA5D1A2D1E5E00E23194 /* ReactiveTask.h */,
+				CD52F6431DD0411100B2F764 /* Availability.swift */,
 				D0BFEAA31A2D216600E23194 /* Errors.swift */,
 				D0BFEA9F1A2D212000E23194 /* Task.swift */,
 				D0BFEA5B1A2D1E5E00E23194 /* Supporting Files */,
@@ -320,6 +323,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CD52F6441DD0411100B2F764 /* Availability.swift in Sources */,
 				D0BFEAA41A2D216600E23194 /* Errors.swift in Sources */,
 				D0BFEAA01A2D212000E23194 /* Task.swift in Sources */,
 			);
