@@ -70,7 +70,7 @@ class TaskSpec: QuickSpec {
 			let strings = [ "foo\n", "bar\n", "buzz\n", "fuzz\n" ]
 			let data = strings.map { $0.data(using: .utf8)! }
 
-			let result = Task("/usr/bin/sort").launch(standardInput: SignalProducer(values: data))
+			let result = Task("/usr/bin/sort").launch(standardInput: SignalProducer(data))
 				.map { event in event.value }
 				.skipNil()
 				.single()
