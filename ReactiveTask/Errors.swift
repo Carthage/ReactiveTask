@@ -9,7 +9,7 @@
 import Foundation
 
 /// An error originating from ReactiveTask.
-public enum TaskError: Error, Equatable {
+public enum TaskError: Error {
 	/// A shell task exited unsuccessfully.
 	case shellTaskFailed(Task, exitCode: Int32, standardError: String?)
 
@@ -34,15 +34,17 @@ extension TaskError: CustomStringConvertible {
 	}
 }
 
-public func == (lhs: TaskError, rhs: TaskError) -> Bool {
-	switch (lhs, rhs) {
-	case let (.shellTaskFailed(lhsTask, lhsCode, lhsErr), .shellTaskFailed(rhsTask, rhsCode, rhsErr)):
-		return lhsTask == rhsTask && lhsCode == rhsCode && lhsErr == rhsErr
+extension TaskError: Equatable {
+	public static func == (lhs: TaskError, rhs: TaskError) -> Bool {
+		switch (lhs, rhs) {
+		case let (.shellTaskFailed(lhsTask, lhsCode, lhsErr), .shellTaskFailed(rhsTask, rhsCode, rhsErr)):
+			return lhsTask == rhsTask && lhsCode == rhsCode && lhsErr == rhsErr
 
-	case let (.posixError(lhsCode), .posixError(rhsCode)):
-		return lhsCode == rhsCode
+		case let (.posixError(lhsCode), .posixError(rhsCode)):
+			return lhsCode == rhsCode
 
-	default:
-		return false
+		default:
+			return false
+		}
 	}
 }
