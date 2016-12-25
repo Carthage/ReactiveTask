@@ -63,6 +63,13 @@ extension Task: CustomStringConvertible {
 }
 
 extension Task: Hashable {
+	public static func == (lhs: Task, rhs: Task) -> Bool {
+		return lhs.launchPath == rhs.launchPath
+			&& lhs.arguments == rhs.arguments
+			&& lhs.workingDirectoryPath == rhs.workingDirectoryPath
+			&& lhs.environment == rhs.environment
+	}
+
 	public var hashValue: Int {
 		var result = launchPath.hashValue ^ (workingDirectoryPath?.hashValue ?? 0)
 		for argument in arguments {
@@ -86,10 +93,6 @@ private func ==<Key: Equatable, Value: Equatable>(lhs: [Key: Value]?, rhs: [Key:
 	default:
 		return false
 	}
-}
-
-public func ==(lhs: Task, rhs: Task) -> Bool {
-	return lhs.launchPath == rhs.launchPath && lhs.arguments == rhs.arguments && lhs.workingDirectoryPath == rhs.workingDirectoryPath && lhs.environment == rhs.environment
 }
 
 /// A private class used to encapsulate a Unix pipe.
@@ -324,22 +327,24 @@ public enum TaskEvent<T>: TaskEventType {
 	}
 }
 
-public func == <T: Equatable>(lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
-	switch (lhs, rhs) {
-	case let (.launch(left), .launch(right)):
-		return left == right
-	
-	case let (.standardOutput(left), .standardOutput(right)):
-		return left == right
-	
-	case let (.standardError(left), .standardError(right)):
-		return left == right
-	
-	case let (.success(left), .success(right)):
-		return left == right
-	
-	default:
-		return false
+extension TaskEvent where T: Equatable {
+	public static func == (lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
+		switch (lhs, rhs) {
+		case let (.launch(left), .launch(right)):
+			return left == right
+
+		case let (.standardOutput(left), .standardOutput(right)):
+			return left == right
+
+		case let (.standardError(left), .standardError(right)):
+			return left == right
+
+		case let (.success(left), .success(right)):
+			return left == right
+
+		default:
+			return false
+		}
 	}
 }
 
