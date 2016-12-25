@@ -520,9 +520,7 @@ extension Task {
 						close(stdoutPipe.writeFD)
 						close(stderrPipe.writeFD)
 
-						stdinProducer.startWithSignal { signal, signalDisposable in
-							disposable += signalDisposable
-						}
+						disposable += stdinProducer.start()
 
 						let _ = disposable.add {
 							process.terminate()
