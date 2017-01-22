@@ -5,15 +5,21 @@ git:
 branches:
   only:
     - master
-before_script:
-  - git submodule update --init --recursive
-script:
-  - set -o pipefail && xcodebuild -workspace "$TRAVIS_XCODE_WORKSPACE" -scheme "$TRAVIS_XCODE_SCHEME" test | xcpretty
 matrix:
   include:
-    - osx_image: xcode8
+    - os: osx
+      osx_image: xcode8.2
       xcode_scheme: ReactiveTask
+      before_script:
+        - git submodule update --init --recursive
+      script:
+        - set -o pipefail && xcodebuild -workspace "$TRAVIS_XCODE_WORKSPACE" -scheme "$TRAVIS_XCODE_SCHEME" test | xcpretty
       env: JOB=Xcode8
+    - os: osx
+      osx_image: xcode8.2
+      script:
+        - swift build
+      env: JOB=SWIFTPM_DARWIN
 notifications:
   email: false
   slack:
