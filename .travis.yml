@@ -18,7 +18,9 @@ matrix:
     - os: osx
       osx_image: xcode8.2
       script:
+        - mv .Package.test.swift Package.swift
         - swift build
+        - swift test
       env: JOB=SWIFTPM_DARWIN
 notifications:
   email: false
