@@ -71,8 +71,7 @@ class TaskSpec: QuickSpec {
 			let data = strings.map { $0.data(using: .utf8)! }
 
 			let result = Task("/usr/bin/sort").launch(standardInput: SignalProducer(data))
-				.map { event in event.value }
-				.skipNil()
+				.filterMap { event in event.value }
 				.single()
 
 			expect(result).notTo(beNil())

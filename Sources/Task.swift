@@ -389,11 +389,7 @@ extension Signal where Value: TaskEventType {
 	/// Ignores incremental standard output and standard error data from the given
 	/// task, sending only a single value with the final, aggregated result.
 	public func ignoreTaskData() -> Signal<Value.T, Error> {
-		return self
-			.map { event in
-				return event.value
-			}
-			.skipNil()
+		return self.filterMap { $0.value }
 	}
 }
 
