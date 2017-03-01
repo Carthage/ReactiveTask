@@ -436,7 +436,7 @@ extension Task {
 				}
 			}
 
-			SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
+			SignalProducer(result: Pipe.create(queue, group).fanout(Pipe.create(queue, group)))
 				.flatMap(.merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<Data>, TaskError> in
 					let stdoutProducer = stdoutPipe.transferReadsToProducer()
 					let stderrProducer = stderrPipe.transferReadsToProducer()
