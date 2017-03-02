@@ -389,11 +389,7 @@ extension Signal where Value: TaskEventType {
 	/// Ignores incremental standard output and standard error data from the given
 	/// task, sending only a single value with the final, aggregated result.
 	public func ignoreTaskData() -> Signal<Value.T, Error> {
-		return self
-			.map { event in
-				return event.value
-			}
-			.skipNil()
+		return self.filterMap { $0.value }
 	}
 }
 
@@ -440,7 +436,7 @@ extension Task {
 				}
 			}
 
-			SignalProducer(result: Pipe.create(queue, group) &&& Pipe.create(queue, group))
+			SignalProducer(result: Pipe.create(queue, group).fanout(Pipe.create(queue, group)))
 				.flatMap(.merge) { stdoutPipe, stderrPipe -> SignalProducer<TaskEvent<Data>, TaskError> in
 					let stdoutProducer = stdoutPipe.transferReadsToProducer()
 					let stderrProducer = stderrPipe.transferReadsToProducer()
