@@ -19,6 +19,8 @@ matrix:
       osx_image: xcode8.2
       script:
         - mv .Package.test.swift Package.swift
+        - swift package update
+        - cd Packages/Nimble-* && git checkout 8116a83864ee78339798c3ef425c42f6ca6bf034 && cd ../../
         - swift build
         - swift test
       env: JOB=SWIFTPM_DARWIN
