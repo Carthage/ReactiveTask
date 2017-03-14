@@ -47,12 +47,14 @@ public struct Task {
 }
 
 private extension String {
+	static let whitespaceRegularExpression = try! NSRegularExpression(pattern: "\\s")
+
 	var escaped: String {
-		if rangeOfCharacter(from: .whitespaces) != nil {
-			return "\"\(self)\""
-		} else {
-			return self
-		}
+		return String.whitespaceRegularExpression.stringByReplacingMatches(
+			in: self,
+			range: NSRange(location: 0, length: self.utf16.count),
+			withTemplate: "\\\\$0"
+		)
 	}
 }
 
