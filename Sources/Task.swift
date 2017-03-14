@@ -47,7 +47,7 @@ public struct Task {
 }
 
 private extension String {
-	static let whitespaceRegularExpression = try! NSRegularExpression(pattern: "\\s")
+	private static let whitespaceRegularExpression = try! NSRegularExpression(pattern: "\\s")
 
 	var escaped: String {
 		return String.whitespaceRegularExpression.stringByReplacingMatches(
