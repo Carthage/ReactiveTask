@@ -46,19 +46,21 @@ public struct Task {
 	}
 }
 
-private extension String {
-	var escaped: String {
-		if rangeOfCharacter(from: .whitespaces) != nil {
-			return "\"\(self)\""
-		} else {
-			return self
-		}
+extension String {
+	private static let whitespaceRegularExpression = try! NSRegularExpression(pattern: "\\s")
+
+	var escapingWhitespaces: String {
+		return String.whitespaceRegularExpression.stringByReplacingMatches(
+			in: self,
+			range: NSRange(location: 0, length: self.utf16.count),
+			withTemplate: "\\\\$0"
+		)
 	}
 }
 
 extension Task: CustomStringConvertible {
 	public var description: String {
-		return "\(launchPath) \(arguments.map { $0.escaped }.joined(separator: " "))"
+		return "\(launchPath) \(arguments.map { $0.escapingWhitespaces }.joined(separator: " "))"
 	}
 }
 
