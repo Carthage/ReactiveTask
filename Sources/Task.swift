@@ -49,7 +49,7 @@ public struct Task {
 private extension String {
 	private static let whitespaceRegularExpression = try! NSRegularExpression(pattern: "\\s")
 
-	var escaped: String {
+	var escapingWhitespaces: String {
 		return String.whitespaceRegularExpression.stringByReplacingMatches(
 			in: self,
 			range: NSRange(location: 0, length: self.utf16.count),
@@ -60,7 +60,7 @@ private extension String {
 
 extension Task: CustomStringConvertible {
 	public var description: String {
-		return "\(launchPath) \(arguments.map { $0.escaped }.joined(separator: " "))"
+		return "\(launchPath) \(arguments.map { $0.escapingWhitespaces }.joined(separator: " "))"
 	}
 }
 
