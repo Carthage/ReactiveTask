@@ -46,7 +46,7 @@ public struct Task {
 	}
 }
 
-private extension String {
+extension String {
 	private static let whitespaceRegularExpression = try! NSRegularExpression(pattern: "\\s")
 
 	var escapingWhitespaces: String {
