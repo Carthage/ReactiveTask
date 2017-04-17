@@ -5,6 +5,9 @@
       location = "group:ReactiveTask.xcodeproj">
    </FileRef>
    <FileRef
+      location = "group:ReactiveTask.playground">
+   </FileRef>
+   <FileRef
       location = "group:Carthage/Checkouts/Nimble/Nimble.xcodeproj">
    </FileRef>
    <FileRef
