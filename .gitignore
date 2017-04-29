@@ -1,4 +1,4 @@
-### https://raw.github.com/github/gitignore/afbff9027d02ccfc680e031f6c295f79ad61662d/Swift.gitignore
+### https://raw.github.com/github/gitignore/c0c1a480a906df0e023f3250cf2ad82f1612be67/Swift.gitignore
 
 # Xcode
 #
@@ -20,9 +20,8 @@ DerivedData/
 xcuserdata/
 
 ## Other
-*.xccheckout
 *.moved-aside
-*.xcuserstate
+*.xccheckout
 *.xcscmblueprint
 
 ## Obj-C/Swift specific
@@ -39,6 +38,7 @@ playground.xcworkspace
 #
 # Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
 # Packages/
+# Package.pins
 .build/
 
 # CocoaPods
