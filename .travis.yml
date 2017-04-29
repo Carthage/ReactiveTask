@@ -1,28 +1,22 @@
 language: objective-c
 xcode_workspace: ReactiveTask.xcworkspace
-git:
-  submodules: false
 branches:
   only:
     - master
 matrix:
   include:
     - os: osx
-      osx_image: xcode8.2
+      osx_image: xcode8.3
       xcode_scheme: ReactiveTask
-      before_script:
-        - git submodule update --init --recursive
       script:
         - set -o pipefail && xcodebuild -workspace "$TRAVIS_XCODE_WORKSPACE" -scheme "$TRAVIS_XCODE_SCHEME" test | xcpretty
       env: JOB=Xcode8
     - os: osx
-      osx_image: xcode8.2
+      osx_image: xcode8.3
       script:
-        - mv .Package.test.swift Package.swift
         - swift package update
-        - cd Packages/Nimble-* && git checkout 8116a83864ee78339798c3ef425c42f6ca6bf034 && cd ../../
         - swift build
-        - swift test
+        - SWIFTPM_TEST_ReactiveTask=YES swift test
       env: JOB=SWIFTPM_DARWIN
 notifications:
   email: false
