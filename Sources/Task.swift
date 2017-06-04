@@ -60,7 +60,11 @@ extension String {
 
 extension Task: CustomStringConvertible {
 	public var description: String {
-		return "\(launchPath) \(arguments.map { $0.escapingWhitespaces }.joined(separator: " "))"
+		var message = "\(launchPath) \(arguments.map { $0.escapingWhitespaces }.joined(separator: " "))"
+		if let workingDirectory = workingDirectoryPath {
+			message += " (launched in \(workingDirectory))"
+		}
+		return message
 	}
 }
 
