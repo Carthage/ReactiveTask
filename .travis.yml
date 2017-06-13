@@ -14,7 +14,6 @@ matrix:
     - os: osx
       osx_image: xcode8.3
       script:
-        - swift package update
         - swift build
         - SWIFTPM_TEST_ReactiveTask=YES swift test
       env: JOB=SWIFTPM_DARWIN
