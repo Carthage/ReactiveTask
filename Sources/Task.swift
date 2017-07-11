@@ -162,7 +162,7 @@ private final class Pipe {
 	/// After starting the returned producer, `readFD` should not be used
 	/// anywhere else, as it may close unexpectedly.
 	func transferReadsToProducer() -> ReadProducer {
-		return SignalProducer { observer, disposable in
+		return SignalProducer { observer, lifetime in
 			self.group.enter()
 			let channel = DispatchIO(type: .stream, fileDescriptor: self.readFD, queue: self.queue) { error in
 				if error == 0 {
@@ -200,7 +200,7 @@ private final class Pipe {
 				}
 			}
 
-			let _ = disposable.add {
+			lifetime.observeEnded {
 				channel.close(flags: .stop)
 			}
 		}
@@ -215,7 +215,7 @@ private final class Pipe {
 	///
 	/// Returns a producer that will complete or error.
 	func writeDataFromProducer(_ producer: SignalProducer<Data, NoError>) -> SignalProducer<(), TaskError> {
-		return SignalProducer { observer, disposable in
+		return SignalProducer { observer, lifetime in
 			self.group.enter()
 			let channel = DispatchIO(type: .stream, fileDescriptor: self.writeFD, queue: self.queue) { error in
 				if error == 0 {
@@ -231,9 +231,9 @@ private final class Pipe {
 			}
 
 			producer.startWithSignal { signal, producerDisposable in
-				disposable.add(producerDisposable)
+				lifetime += producerDisposable
 
-				signal.observe(Observer(value: { data in
+				signal.observe(Signal.Observer(value: { data in
 					let dispatchData = data.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) -> DispatchData in
 						let buffer = UnsafeBufferPointer(start: bytes, count: data.count)
 						return DispatchData(bytes: buffer)
@@ -253,7 +253,7 @@ private final class Pipe {
 				}))
 			}
 
-			let _ = disposable.add {
+			lifetime.observeEnded {
 				channel.close(flags: .stop)
 			}
 		}
@@ -409,7 +409,7 @@ extension Task {
 	/// - Returns: A producer that will launch the receiver when started, then send
 	///            `TaskEvent`s as execution proceeds.
 	public func launch(standardInput: SignalProducer<Data, NoError>? = nil) -> SignalProducer<TaskEvent<Data>, TaskError> {
-		return SignalProducer { observer, disposable in
+		return SignalProducer { observer, lifetime in
 			let queue = DispatchQueue(label: self.description, attributes: [])
 			let group = Task.group
 
@@ -466,15 +466,15 @@ extension Task {
 						}
 					}
 
-					return SignalProducer { observer, disposable in
+					return SignalProducer { observer, lifetime in
 						func startAggregating(producer: Pipe.ReadProducer, chunk: @escaping (Data) -> TaskEvent<Data>) -> Pipe.ReadProducer {
 							let aggregated = MutableProperty<Aggregation?>(nil)
 
 							producer.startWithSignal { signal, signalDisposable in
-								disposable += signalDisposable
+								lifetime += signalDisposable
 
 								var aggregate = Data()
-								signal.observe(Observer(value: { data in
+								signal.observe(Signal.Observer(value: { data in
 									observer.send(value: chunk(data))
 									aggregate.append(data)
 								}, failed: { error in
@@ -504,14 +504,14 @@ extension Task {
 							if terminationStatus == EXIT_SUCCESS {
 								// Wait for stderr to finish, then pass
 								// through stdout.
-								disposable += stderrAggregated
+								lifetime += stderrAggregated
 									.then(stdoutAggregated)
 									.map(TaskEvent.success)
 									.start(observer)
 							} else {
 								// Wait for stdout to finish, then pass
 								// through stderr.
-								disposable += stdoutAggregated
+								lifetime += stdoutAggregated
 									.then(stderrAggregated)
 									.flatMap(.concat) { data -> SignalProducer<TaskEvent<Data>, TaskError> in
 										let errorString = (data.count > 0 ? String(data: data, encoding: .utf8) : nil)
@@ -527,15 +527,15 @@ extension Task {
 						close(stdoutPipe.writeFD)
 						close(stderrPipe.writeFD)
 
-						disposable += stdinProducer.start()
+						lifetime += stdinProducer.start()
 
-						let _ = disposable.add {
+						lifetime.observeEnded {
 							process.terminate()
 						}
 					}
 				}
 				.startWithSignal { signal, taskDisposable in
-					disposable.add(taskDisposable)
+					lifetime += taskDisposable
 					signal.observe(observer)
 				}
 		}

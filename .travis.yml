@@ -14,8 +14,12 @@ matrix:
     - os: osx
       osx_image: xcode8.3
       script:
+        - swift package fetch
+        - swift package edit ReactiveSwift --revision 2.0.0-rc.2
         - swift build
         - SWIFTPM_TEST_ReactiveTask=YES swift test
+      git:
+        submodules: false
       env: JOB=SWIFTPM_DARWIN
 notifications:
   email: false
