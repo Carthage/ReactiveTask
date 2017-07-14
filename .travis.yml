@@ -12,10 +12,16 @@ matrix:
         - set -o pipefail && xcodebuild -workspace "$TRAVIS_XCODE_WORKSPACE" -scheme "$TRAVIS_XCODE_SCHEME" test | xcpretty
       env: JOB=Xcode8
     - os: osx
+      osx_image: xcode9
+      xcode_scheme: ReactiveTask
+      script:
+        - set -o pipefail && xcodebuild -workspace "$TRAVIS_XCODE_WORKSPACE" -scheme "$TRAVIS_XCODE_SCHEME" test | xcpretty
+      env: JOB=Xcode9
+    - os: osx
       osx_image: xcode8.3
       script:
         - swift package fetch
-        - swift package edit ReactiveSwift --revision 2.0.0-rc.2
+        - swift package edit ReactiveSwift --revision 2.0.0-rc.3
         - swift build
         - SWIFTPM_TEST_ReactiveTask=YES swift test
       git:
