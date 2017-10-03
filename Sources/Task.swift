@@ -88,7 +88,7 @@ extension Task: Hashable {
 	}
 }
 
-private func ==<Key: Equatable, Value: Equatable>(lhs: [Key: Value]?, rhs: [Key: Value]?) -> Bool {
+private func ==<Key, Value: Equatable>(lhs: [Key: Value]?, rhs: [Key: Value]?) -> Bool {
 	switch (lhs, rhs) {
 	case let (lhs?, rhs?):
 		return lhs == rhs
