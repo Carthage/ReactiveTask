@@ -1,23 +1,20 @@
-import Foundation
+// swift-tools-version:4.0
 import PackageDescription
-
-var isSwiftPackagerManagerTest: Bool {
-    return ProcessInfo.processInfo.environment["SWIFTPM_TEST_ReactiveTask"] == "YES"
-}
 
 let package = Package(
     name: "ReactiveTask",
-    dependencies: {
-        var deps: [Package.Dependency] = [
-            .Package(url: "https://github.com/antitypical/Result.git", versions: Version(3, 2, 1)..<Version(3, .max, .max)),
-            .Package(url: "https://github.com/ReactiveCocoa/ReactiveSwift.git", majorVersion: 2),
-        ]
-        if isSwiftPackagerManagerTest {
-            deps += [
-                .Package(url: "https://github.com/Quick/Quick.git", majorVersion: 1, minor: 2),
-                .Package(url: "https://github.com/Quick/Nimble.git", majorVersion: 7),
-            ]
-        }
-        return deps
-    }()
+    products: [
+        .library(name: "ReactiveTask", targets: ["ReactiveTask"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/antitypical/Result.git", from: "3.2.1"),
+        .package(url: "https://github.com/ReactiveCocoa/ReactiveSwift.git", from: "2.0.1"),
+        .package(url: "https://github.com/Quick/Quick.git", from: "1.2.0"),
+        .package(url: "https://github.com/Quick/Nimble.git", from: "7.0.2"),
+    ],
+    targets: [
+        .target(name: "ReactiveTask", dependencies: ["Result", "ReactiveSwift"], path: "Sources"),
+        .testTarget(name: "ReactiveTaskTests", dependencies: ["ReactiveTask", "Quick", "Nimble"]),
+    ],
+    swiftLanguageVersions: [3]
 )

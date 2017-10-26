@@ -14,8 +14,9 @@ matrix:
     - os: osx
       osx_image: xcode9
       script:
+        - swift --version
         - swift build
-        - SWIFTPM_TEST_ReactiveTask=YES swift test
+        - swift test
       git:
         submodules: false
       env: JOB=SWIFTPM_DARWIN
