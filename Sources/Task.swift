@@ -235,7 +235,7 @@ private final class Pipe {
 
 				signal.observe(Signal.Observer(value: { data in
 					let dispatchData = data.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) -> DispatchData in
-						let buffer = UnsafeBufferPointer(start: bytes, count: data.count)
+						let buffer = UnsafeRawBufferPointer(start: bytes, count: data.count)
 						return DispatchData(bytes: buffer)
 					}
 					
