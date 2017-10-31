@@ -16,5 +16,5 @@ let package = Package(
         .target(name: "ReactiveTask", dependencies: ["Result", "ReactiveSwift"], path: "Sources"),
         .testTarget(name: "ReactiveTaskTests", dependencies: ["ReactiveTask", "Quick", "Nimble"]),
     ],
-    swiftLanguageVersions: [3]
+    swiftLanguageVersions: [4]
 )
