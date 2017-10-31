@@ -180,12 +180,10 @@ private final class Pipe {
 			channel.setLimit(lowWater: 1)
 			channel.read(offset: 0, length: Int.max, queue: self.queue) { (done, dispatchData, error) in
 				if let dispatchData = dispatchData {
-					let bytes = UnsafeMutablePointer<UInt8>.allocate(capacity: dispatchData.count)
-					dispatchData.copyBytes(to: bytes, count: dispatchData.count)
-					let data = Data(bytes: bytes, count: dispatchData.count)
-					bytes.deinitialize(count: dispatchData.count)
-					bytes.deallocate(capacity: dispatchData.count)
-					
+					// Cast DispatchData to Data.
+					// See https://gist.github.com/mayoff/6e35e263b9ddd04d9b77e5261212be19.
+					let data = dispatchData as Any as! NSData as Data
+
 					observer.send(value: data)
 				}
 
@@ -235,7 +233,7 @@ private final class Pipe {
 
 				signal.observe(Signal.Observer(value: { data in
 					let dispatchData = data.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) -> DispatchData in
-						let buffer = UnsafeBufferPointer(start: bytes, count: data.count)
+						let buffer = UnsafeRawBufferPointer(start: bytes, count: data.count)
 						return DispatchData(bytes: buffer)
 					}
 					
