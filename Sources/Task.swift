@@ -54,7 +54,7 @@ extension String {
 			in: self,
 			range: NSRange(location: 0, length: self.utf16.count),
 			withTemplate: "\\\\$0"
-		)
+		).replacingOccurrences(of: "\0", with: "␀")
 	}
 }
 
