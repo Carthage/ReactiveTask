@@ -52,7 +52,7 @@ extension String {
 	var escapingWhitespaces: String {
 		return String.whitespaceRegularExpression.stringByReplacingMatches(
 			in: self,
-			range: NSRange(location: 0, length: self.utf16.count),
+			range: NSRange(startIndex..., in: self),
 			withTemplate: "\\\\$0"
 		).replacingOccurrences(of: "\0", with: "␀")
 	}
