@@ -512,7 +512,7 @@ extension Task {
 								lifetime += stdoutAggregated
 									.then(stderrAggregated)
 									.flatMap(.concat) { data -> SignalProducer<TaskEvent<Data>, TaskError> in
-										let errorString = (data.count > 0 ? String(data: data, encoding: .utf8) : nil)
+										let errorString = (data.isEmpty ? nil : String(data: data, encoding: .utf8))
 										return SignalProducer(error: .shellTaskFailed(self, exitCode: terminationStatus, standardError: errorString))
 									}
 									.start(observer)
