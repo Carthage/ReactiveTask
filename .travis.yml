@@ -6,13 +6,13 @@ branches:
 matrix:
   include:
     - os: osx
-      osx_image: xcode9
+      osx_image: xcode9.1
       xcode_scheme: ReactiveTask
       script:
         - set -o pipefail && xcodebuild -workspace "$TRAVIS_XCODE_WORKSPACE" -scheme "$TRAVIS_XCODE_SCHEME" test | xcpretty
       env: JOB=Xcode9
     - os: osx
-      osx_image: xcode9
+      osx_image: xcode9.1
       script:
         - swift --version
         - swift build
