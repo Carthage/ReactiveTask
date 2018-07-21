@@ -88,19 +88,6 @@ extension Task: Hashable {
 	}
 }
 
-private func ==<Key, Value: Equatable>(lhs: [Key: Value]?, rhs: [Key: Value]?) -> Bool {
-	switch (lhs, rhs) {
-	case let (lhs?, rhs?):
-		return lhs == rhs
-		
-	case (.none, .none):
-		return true
-		
-	default:
-		return false
-	}
-}
-
 /// A private class used to encapsulate a Unix pipe.
 private final class Pipe {
 	typealias ReadProducer = SignalProducer<Data, TaskError>
@@ -331,7 +318,7 @@ public enum TaskEvent<T>: TaskEventType {
 	}
 }
 
-extension TaskEvent where T: Equatable {
+extension TaskEvent: Equatable where T: Equatable {
 	public static func == (lhs: TaskEvent<T>, rhs: TaskEvent<T>) -> Bool {
 		switch (lhs, rhs) {
 		case let (.launch(left), .launch(right)):
