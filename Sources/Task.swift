@@ -169,8 +169,8 @@ private final class Pipe {
 				if let dispatchData = dispatchData {
 					// Cast DispatchData to Data.
 					// See https://gist.github.com/mayoff/6e35e263b9ddd04d9b77e5261212be19.
-					let data = dispatchData as Any as! NSData as Data
-
+					let nsdata = dispatchData as Any as! NSData
+					let data = Data(referencing: nsdata)
 					observer.send(value: data)
 				}
 
