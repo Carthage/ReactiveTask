@@ -402,6 +402,13 @@ extension Task {
 			process.launchPath = self.launchPath
 			process.arguments = self.arguments
 
+			// This is for terminating subprocesses when the parent process exits.
+			// See https://github.com/Carthage/ReactiveTask/issues/3 for the details.
+			let selector = Selector(("setStartsNewProcessGroup:"))
+			if process.responds(to: selector) {
+				process.perform(selector, with: false as NSNumber)
+			}
+
 			if let cwd = self.workingDirectoryPath {
 				process.currentDirectoryPath = cwd
 			}
@@ -484,8 +491,8 @@ extension Task {
 						process.standardError = stderrPipe.writeHandle
 
 						group.enter()
-						process.terminationHandler = { nstask in
-							let terminationStatus = nstask.terminationStatus
+						process.terminationHandler = { process in
+							let terminationStatus = process.terminationStatus
 							if terminationStatus == EXIT_SUCCESS {
 								// Wait for stderr to finish, then pass
 								// through stdout.
