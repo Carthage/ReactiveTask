@@ -9,21 +9,24 @@ matrix:
       osx_image: xcode9.4
       xcode_scheme: ReactiveTask
       script:
-        - set -o pipefail && xcodebuild -workspace "$TRAVIS_XCODE_WORKSPACE" -scheme "$TRAVIS_XCODE_SCHEME" test | bundle exec xcpretty
+        - set -o pipefail && xcodebuild -workspace "$TRAVIS_XCODE_WORKSPACE" -scheme "$TRAVIS_XCODE_SCHEME" test | xcpretty
       env: JOB=Xcode9.4
     - os: osx
       osx_image: xcode9.4
-      before_script:
-        - bundle install
       script:
         - swift --version
         - swift build
         - swift test
-        - bundle exec pod repo update
-        - bundle exec pod spec lint --quick
       git:
         submodules: false
       env: JOB=SWIFTPM_DARWIN
+    - os: osx
+      osx_image: xcode9.4
+      before_script:
+        - gem install cocoapods
+      script:
+        - pod repo update
+        - pod spec lint --quick
 notifications:
   email: false
   slack:
