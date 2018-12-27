@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name         = "ReactiveTask"
   # Version goes here and will be used to access the git tag later on, once we have a first release.
-  s.version      = "0.16.0"
+  s.version      = "0.15.0"
   s.summary      = "Swift framework for launching shell tasks"
   s.description  = <<-DESC
                    ReactiveTask is a Swift framework for launching shell tasks (processes), built using ReactiveSwift.
