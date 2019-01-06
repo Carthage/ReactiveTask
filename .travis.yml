@@ -20,6 +20,11 @@ matrix:
       git:
         submodules: false
       env: JOB=SWIFTPM_DARWIN
+    - os: osx
+      osx_image: xcode9.4
+      script:
+        - pod repo update
+        - pod lib lint
 notifications:
   email: false
   slack:
