@@ -23,6 +23,7 @@ matrix:
     - os: osx
       osx_image: xcode10.1
       script:
+        - gem update cocoapods
         - pod repo update
         - pod lib lint
 notifications:
