@@ -11,7 +11,6 @@ import Nimble
 import Quick
 import ReactiveSwift
 import ReactiveTask
-import Result
 
 class TaskSpec: QuickSpec {
 	override func spec() {
