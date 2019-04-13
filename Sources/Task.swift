@@ -78,11 +78,8 @@ extension Task: Hashable {
 	public func hash(into hasher: inout Hasher) {
 		hasher.combine(launchPath)
 		hasher.combine(workingDirectoryPath)
-		arguments.forEach { hasher.combine($0) }
-		(environment ?? [:]).forEach { key, value in
-			hasher.combine(key)
-			hasher.combine(value)
-		}
+		hasher.combine(arguments)
+		hasher.combine(environment)
 	}
 }
 
