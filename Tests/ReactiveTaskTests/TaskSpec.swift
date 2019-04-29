@@ -87,9 +87,14 @@ class TaskSpec: QuickSpec {
 
 			expect(result).notTo(beNil())
 			expect(result.error).notTo(beNil())
-			expect(result.error) == TaskError.shellTaskFailed(task, exitCode: 1, standardError: "stat: not-a-real-file: stat: No such file or directory\n")
+
+			let stdError = "stat: not-a-real-file: stat: No such file or directory\n"
+			expect(result.error) == TaskError.shellTaskFailed(task, exitCode: 1, standardError: stdError)
 			if let error = result.error {
-				expect(error.description) == "A shell task (/usr/bin/stat not-a-real-file) failed with exit code 1:\nstat: not-a-real-file: stat: No such file or directory\n"
+				let expectedDescription =
+					"A shell task (/usr/bin/stat not-a-real-file) failed with exit code 1:\n" +
+					"stat: not-a-real-file: stat: No such file or directory\n"
+				expect(error.description) == expectedDescription
 			}
 		}
 
@@ -108,7 +113,8 @@ class TaskSpec: QuickSpec {
 				}
 
 				expect(errorTask) == task
-				expect(error.description.hasPrefix("A shell task (/usr/bin/non-existent-command foo) failed to launch:\n")).to(beTrue())
+				let expectedPrefix = "A shell task (/usr/bin/non-existent-command foo) failed to launch:\n"
+				expect(error.description.hasPrefix(expectedPrefix)).to(beTrue())
 			}
 		}
 	}
