@@ -15,5 +15,5 @@ FOUNDATION_EXPORT double ReactiveTaskVersionNumber;
 FOUNDATION_EXPORT const unsigned char ReactiveTaskVersionString[];
 
 // In this header, you should import all the public headers of your framework using statements like #import <ReactiveTask/PublicHeader.h>
-
+#import <ReactiveTask/ObjC.h>
 

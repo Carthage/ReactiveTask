@@ -508,14 +508,27 @@ extension Task {
 						}
 						
 						observer.send(value: .launch(self))
-						process.launch()
-						close(stdoutPipe.writeFD)
-						close(stderrPipe.writeFD)
 
-						lifetime += stdinProducer.start()
+						do {
+							defer {
+								close(stdoutPipe.writeFD)
+								close(stderrPipe.writeFD)
+							}
 
-						lifetime.observeEnded {
-							process.terminate()
+							try ObjC.convertException {
+								process.launch()
+							}
+
+							lifetime += stdinProducer.start()
+
+							lifetime.observeEnded {
+								process.terminate()
+							}
+						} catch {
+
+							print("Caught error: \(error)")
+
+							observer.send(error: TaskError.shellTaskLaunchFailed(self, reason: error.localizedDescription))
 						}
 					}
 				}

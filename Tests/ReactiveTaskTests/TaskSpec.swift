@@ -92,5 +92,18 @@ class TaskSpec: QuickSpec {
 				expect(error.description) == "A shell task (/usr/bin/stat not-a-real-file) failed with exit code 1:\nstat: not-a-real-file: stat: No such file or directory\n"
 			}
 		}
+
+		it("should fail correctly with an invalid task") {
+			let task = Task("/usr/bin/non-existent-command", arguments: [ "foo" ])
+			let result = task.launch()
+				.wait()
+
+			expect(result).notTo(beNil())
+			expect(result.error).notTo(beNil())
+			expect(result.error) == TaskError.shellTaskLaunchFailed(task, reason: "launch path not accessible")
+			if let error = result.error {
+				expect(error.description) == "A shell task (/usr/bin/non-existent-command foo) failed to launch:\nlaunch path not accessible"
+			}
+		}
 	}
 }
