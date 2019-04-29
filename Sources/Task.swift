@@ -510,24 +510,24 @@ extension Task {
 						observer.send(value: .launch(self))
 
 						do {
-							defer {
-								close(stdoutPipe.writeFD)
-								close(stderrPipe.writeFD)
-							}
+							do {
+								defer {
+									close(stdoutPipe.writeFD)
+									close(stderrPipe.writeFD)
+								}
 
-							try ObjC.convertException {
-								process.launch()
+								if #available(macOS 10.13, *) {
+									try process.run()
+								} else {
+									process.launch()
+								}
 							}
-
 							lifetime += stdinProducer.start()
 
 							lifetime.observeEnded {
 								process.terminate()
 							}
 						} catch {
-
-							print("Caught error: \(error)")
-
 							observer.send(error: TaskError.shellTaskLaunchFailed(self, reason: error.localizedDescription))
 						}
 					}

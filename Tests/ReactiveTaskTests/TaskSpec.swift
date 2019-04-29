@@ -100,9 +100,15 @@ class TaskSpec: QuickSpec {
 
 			expect(result).notTo(beNil())
 			expect(result.error).notTo(beNil())
-			expect(result.error) == TaskError.shellTaskLaunchFailed(task, reason: "launch path not accessible")
 			if let error = result.error {
-				expect(error.description) == "A shell task (/usr/bin/non-existent-command foo) failed to launch:\nlaunch path not accessible"
+
+				guard case let TaskError.shellTaskLaunchFailed(errorTask, _) = error else {
+					fail("Expected shellTaskLaunchFailed error to be received")
+					return
+				}
+
+				expect(errorTask) == task
+				expect(error.description.hasPrefix("A shell task (/usr/bin/non-existent-command foo) failed to launch:\n")).to(beTrue())
 			}
 		}
 	}
