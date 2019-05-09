@@ -75,16 +75,17 @@ extension Task: Hashable {
 			&& lhs.workingDirectoryPath == rhs.workingDirectoryPath
 			&& lhs.environment == rhs.environment
 	}
-
-	public var hashValue: Int {
-		var result = launchPath.hashValue ^ (workingDirectoryPath?.hashValue ?? 0)
+	
+	public func hash(into hasher: inout Hasher) {
+		hasher.combine(launchPath)
+		hasher.combine(workingDirectoryPath)
 		for argument in arguments {
-			result ^= argument.hashValue
+			hasher.combine(argument)
 		}
 		for (key, value) in environment ?? [:] {
-			result ^= key.hashValue ^ value.hashValue
+			hasher.combine(key)
+			hasher.combine(value)
 		}
-		return result
 	}
 }
 
