@@ -508,22 +508,24 @@ extension Task {
 						}
 						
 						observer.send(value: .launch(self))
-
-						do {
-							defer {
-								close(stdoutPipe.writeFD)
-								close(stderrPipe.writeFD)
-							}
-
-							if #available(macOS 10.13, *) {
+						
+						if #available(macOS 10.13, *) {
+							do {
+								defer {
+									close(stdoutPipe.writeFD)
+									close(stderrPipe.writeFD)
+								}
 								try process.run()
-							} else {
-								process.launch()
+							} catch {
+								observer.send(error: TaskError.launchFailed(self, reason: error.localizedDescription))
+								return
 							}
-						} catch {
-							observer.send(error: TaskError.shellTaskLaunchFailed(self, reason: error.localizedDescription))
-							return
+						} else {
+							process.launch()
+							close(stdoutPipe.writeFD)
+							close(stderrPipe.writeFD)
 						}
+						
 						lifetime += stdinProducer.start()
 
 						lifetime.observeEnded {

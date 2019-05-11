@@ -107,8 +107,8 @@ class TaskSpec: QuickSpec {
 			expect(result.error).notTo(beNil())
 			if let error = result.error {
 
-				guard case let TaskError.shellTaskLaunchFailed(errorTask, _) = error else {
-					fail("Expected shellTaskLaunchFailed error to be received")
+				guard case let TaskError.launchFailed(errorTask, _) = error else {
+					fail("Expected launchFailed error to be received")
 					return
 				}
 
