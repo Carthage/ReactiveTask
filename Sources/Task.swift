@@ -36,13 +36,13 @@ public struct Task {
 		self.workingDirectoryPath = workingDirectoryPath
 		self.environment = environment
 	}
-	
+
 	/// A GCD group which to wait completion
 	fileprivate static let group = DispatchGroup()
-	
+
 	/// wait for all task termination
 	public static func waitForAllTaskTermination() {
-		let _ = Task.group.wait(timeout: DispatchTime.distantFuture)
+		_ = Task.group.wait(timeout: DispatchTime.distantFuture)
 	}
 }
 
@@ -100,7 +100,7 @@ private final class Pipe {
 
 	/// A GCD queue upon which to deliver I/O callbacks.
 	let queue: DispatchQueue
-	
+
 	/// A GCD group which to wait completion
 	let group: DispatchGroup
 
@@ -223,7 +223,7 @@ private final class Pipe {
 						let buffer = UnsafeRawBufferPointer(start: bytes, count: data.count)
 						return DispatchData(bytes: buffer)
 					}
-					
+
 					channel.write(offset: 0, data: dispatchData, queue: self.queue) { (done, data, error) in
 						if error == ECANCELED {
 							observer.sendInterrupted()
@@ -264,7 +264,7 @@ public protocol TaskEventType {
 public enum TaskEvent<T>: TaskEventType {
 	/// The task is about to be launched.
 	case launch(Task)
-	
+
 	/// Some data arrived from the task on `stdout`.
 	case standardOutput(Data)
 
@@ -305,7 +305,7 @@ public enum TaskEvent<T>: TaskEventType {
 		switch self {
 		case let .launch(task):
 			return .init(value: .launch(task))
-			
+
 		case let .standardOutput(data):
 			return .init(value: .standardOutput(data))
 
@@ -348,7 +348,7 @@ extension TaskEvent: CustomStringConvertible {
 		switch self {
 		case let .launch(task):
 			return "launch: \(task)"
-			
+
 		case let .standardOutput(data):
 			return "stdout: " + dataDescription(data)
 
@@ -368,7 +368,7 @@ extension SignalProducer where Value: TaskEventType {
 			return taskEvent.producerMap(transform)
 		}
 	}
-	
+
 	/// Ignores incremental standard output and standard error data from the given
 	/// task, sending only a single value with the final, aggregated result.
 	public func ignoreTaskData() -> SignalProducer<Value.T, Error> {
@@ -506,9 +506,9 @@ extension Task {
 							}
 							group.leave()
 						}
-						
+
 						observer.send(value: .launch(self))
-						
+
 						if #available(macOS 10.13, *) {
 							do {
 								defer {
@@ -525,7 +525,7 @@ extension Task {
 							close(stdoutPipe.writeFD)
 							close(stderrPipe.writeFD)
 						}
-						
+
 						lifetime += stdinProducer.start()
 
 						lifetime.observeEnded {
