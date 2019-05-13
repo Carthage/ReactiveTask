@@ -169,8 +169,8 @@ private final class Pipe {
 				if let dispatchData = dispatchData {
 					// Cast DispatchData to Data.
 					// See https://gist.github.com/mayoff/6e35e263b9ddd04d9b77e5261212be19.
-					let data = dispatchData as Any as! NSData as Data
-
+					let nsdata = dispatchData as Any as! NSData
+					let data = Data(referencing: nsdata)
 					observer.send(value: data)
 				}
 
@@ -390,10 +390,13 @@ extension Task {
 	/// - Parameters:
 	///   - standardInput: Data to stream to standard input of the launched process. If nil, stdin will
 	///                    be inherited from the parent process.
+	///   - shouldBeTerminatedOnParentExit: A flag to control whether the launched child process should be terminated
+	///                                     when the parent process exits. The default value is `false`.
 	///
 	/// - Returns: A producer that will launch the receiver when started, then send
 	///            `TaskEvent`s as execution proceeds.
-	public func launch(standardInput: SignalProducer<Data, NoError>? = nil) -> SignalProducer<TaskEvent<Data>, TaskError> {
+	public func launch(standardInput: SignalProducer<Data, NoError>? = nil,
+					   shouldBeTerminatedOnParentExit: Bool = false) -> SignalProducer<TaskEvent<Data>, TaskError> {
 		return SignalProducer { observer, lifetime in
 			let queue = DispatchQueue(label: self.description, attributes: [])
 			let group = Task.group
@@ -401,6 +404,15 @@ extension Task {
 			let process = Process()
 			process.launchPath = self.launchPath
 			process.arguments = self.arguments
+
+			if shouldBeTerminatedOnParentExit {
+				// This is for terminating subprocesses when the parent process exits.
+				// See https://github.com/Carthage/ReactiveTask/issues/3 for the details.
+				let selector = Selector(("setStartsNewProcessGroup:"))
+				if process.responds(to: selector) {
+					process.perform(selector, with: false as NSNumber)
+				}
+			}
 
 			if let cwd = self.workingDirectoryPath {
 				process.currentDirectoryPath = cwd
@@ -484,8 +496,8 @@ extension Task {
 						process.standardError = stderrPipe.writeHandle
 
 						group.enter()
-						process.terminationHandler = { nstask in
-							let terminationStatus = nstask.terminationStatus
+						process.terminationHandler = { process in
+							let terminationStatus = process.terminationStatus
 							if terminationStatus == EXIT_SUCCESS {
 								// Wait for stderr to finish, then pass
 								// through stdout.
