@@ -536,7 +536,7 @@ extension Task {
 extension Result {
 	/// Returns a Result with a tuple of the receiver and `other` values if both
 	/// are `Success`es, or re-wrapping the error of the earlier `Failure`.
-	public func fanout<U>(_ other: @autoclosure () -> Result<U, Error>) -> Result<(Success, U), Error> {
+	func fanout<U>(_ other: @autoclosure () -> Result<U, Error>) -> Result<(Success, U), Error> {
 		return self.flatMap { left in other().map { right in (left, right) } }
 	}
 }
