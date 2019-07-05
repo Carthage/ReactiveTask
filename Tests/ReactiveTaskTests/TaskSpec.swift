@@ -6,12 +6,13 @@
 //  Copyright (c) 2014 Carthage. All rights reserved.
 //
 
+// swiftlint:disable function_body_length
+
 import Foundation
 import Nimble
 import Quick
 import ReactiveSwift
 import ReactiveTask
-import Result
 
 class TaskSpec: QuickSpec {
 	override func spec() {

@@ -24,17 +24,8 @@
         "repositoryURL": "https://github.com/ReactiveCocoa/ReactiveSwift.git",
         "state": {
           "branch": null,
-          "revision": "e285cea17cca8e23928d1e85a235638184e39ac9",
-          "version": "5.0.0"
-        }
-      },
-      {
-        "package": "Result",
-        "repositoryURL": "https://github.com/antitypical/Result.git",
-        "state": {
-          "branch": null,
-          "revision": "2ca499ba456795616fbc471561ff1d963e6ae160",
-          "version": "4.1.0"
+          "revision": "3eba2b48ee80f87058de5ae8bb41e585bde5c997",
+          "version": "6.0.0"
         }
       }
     ]

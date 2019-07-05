@@ -8,7 +8,6 @@
 
 import Foundation
 import ReactiveSwift
-import Result
 
 /// Describes how to execute a shell command.
 public struct Task {
@@ -36,17 +35,18 @@ public struct Task {
 		self.workingDirectoryPath = workingDirectoryPath
 		self.environment = environment
 	}
-	
+
 	/// A GCD group which to wait completion
 	fileprivate static let group = DispatchGroup()
-	
+
 	/// wait for all task termination
 	public static func waitForAllTaskTermination() {
-		let _ = Task.group.wait(timeout: DispatchTime.distantFuture)
+		_ = Task.group.wait(timeout: DispatchTime.distantFuture)
 	}
 }
 
 extension String {
+	// swiftlint:disable:next force_try
 	private static let whitespaceRegularExpression = try! NSRegularExpression(pattern: "\\s")
 
 	var escapingWhitespaces: String {
@@ -75,17 +75,13 @@ extension Task: Hashable {
 			&& lhs.workingDirectoryPath == rhs.workingDirectoryPath
 			&& lhs.environment == rhs.environment
 	}
-	
+
 	public func hash(into hasher: inout Hasher) {
 		hasher.combine(launchPath)
+		hasher.combine(arguments)
 		hasher.combine(workingDirectoryPath)
-		for argument in arguments {
-			hasher.combine(argument)
-		}
-		for (key, value) in environment ?? [:] {
-			hasher.combine(key)
-			hasher.combine(value)
-		}
+		hasher.combine(environment)
+
 	}
 }
 
@@ -101,7 +97,7 @@ private final class Pipe {
 
 	/// A GCD queue upon which to deliver I/O callbacks.
 	let queue: DispatchQueue
-	
+
 	/// A GCD group which to wait completion
 	let group: DispatchGroup
 
@@ -170,7 +166,7 @@ private final class Pipe {
 				if let dispatchData = dispatchData {
 					// Cast DispatchData to Data.
 					// See https://gist.github.com/mayoff/6e35e263b9ddd04d9b77e5261212be19.
-					let nsdata = dispatchData as Any as! NSData
+					let nsdata = dispatchData as Any as! NSData // swiftlint:disable:this force_cast
 					let data = Data(referencing: nsdata)
 					observer.send(value: data)
 				}
@@ -200,7 +196,7 @@ private final class Pipe {
 	/// anywhere else, as it may close unexpectedly.
 	///
 	/// Returns a producer that will complete or error.
-	func writeDataFromProducer(_ producer: SignalProducer<Data, NoError>) -> SignalProducer<(), TaskError> {
+	func writeDataFromProducer(_ producer: SignalProducer<Data, Never>) -> SignalProducer<(), TaskError> {
 		return SignalProducer { observer, lifetime in
 			self.group.enter()
 			let channel = DispatchIO(type: .stream, fileDescriptor: self.writeFD, queue: self.queue) { error in
@@ -220,12 +216,11 @@ private final class Pipe {
 				lifetime += producerDisposable
 
 				signal.observe(Signal.Observer(value: { data in
-					let dispatchData = data.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) -> DispatchData in
-						let buffer = UnsafeRawBufferPointer(start: bytes, count: data.count)
+					let dispatchData = data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> DispatchData in
 						return DispatchData(bytes: buffer)
 					}
-					
-					channel.write(offset: 0, data: dispatchData, queue: self.queue) { (done, data, error) in
+
+					channel.write(offset: 0, data: dispatchData, queue: self.queue) { _, _, error in
 						if error == ECANCELED {
 							observer.sendInterrupted()
 						} else if error != 0 {
@@ -248,7 +243,7 @@ private final class Pipe {
 
 public protocol TaskEventType {
 	/// The type of value embedded in a `Success` event.
-	associatedtype T
+	associatedtype T // swiftlint:disable:this type_name
 
 	/// The resulting value, if the event is `Success`.
 	var value: T? { get }
@@ -265,7 +260,7 @@ public protocol TaskEventType {
 public enum TaskEvent<T>: TaskEventType {
 	/// The task is about to be launched.
 	case launch(Task)
-	
+
 	/// Some data arrived from the task on `stdout`.
 	case standardOutput(Data)
 
@@ -306,7 +301,7 @@ public enum TaskEvent<T>: TaskEventType {
 		switch self {
 		case let .launch(task):
 			return .init(value: .launch(task))
-			
+
 		case let .standardOutput(data):
 			return .init(value: .standardOutput(data))
 
@@ -349,7 +344,7 @@ extension TaskEvent: CustomStringConvertible {
 		switch self {
 		case let .launch(task):
 			return "launch: \(task)"
-			
+
 		case let .standardOutput(data):
 			return "stdout: " + dataDescription(data)
 
@@ -369,7 +364,7 @@ extension SignalProducer where Value: TaskEventType {
 			return taskEvent.producerMap(transform)
 		}
 	}
-	
+
 	/// Ignores incremental standard output and standard error data from the given
 	/// task, sending only a single value with the final, aggregated result.
 	public func ignoreTaskData() -> SignalProducer<Value.T, Error> {
@@ -396,8 +391,10 @@ extension Task {
 	///
 	/// - Returns: A producer that will launch the receiver when started, then send
 	///            `TaskEvent`s as execution proceeds.
-	public func launch(standardInput: SignalProducer<Data, NoError>? = nil,
-					   shouldBeTerminatedOnParentExit: Bool = false) -> SignalProducer<TaskEvent<Data>, TaskError> {
+	public func launch( // swiftlint:disable:this function_body_length cyclomatic_complexity
+		standardInput: SignalProducer<Data, Never>? = nil,
+		shouldBeTerminatedOnParentExit: Bool = false
+	) -> SignalProducer<TaskEvent<Data>, TaskError> {
 		return SignalProducer { observer, lifetime in
 			let queue = DispatchQueue(label: self.description, attributes: [])
 			let group = Task.group
@@ -519,7 +516,7 @@ extension Task {
 							}
 							group.leave()
 						}
-						
+
 						observer.send(value: .launch(self))
 						process.launch()
 						close(stdoutPipe.writeFD)
@@ -537,5 +534,13 @@ extension Task {
 					signal.observe(observer)
 				}
 		}
+	}
+}
+
+extension Result {
+	/// Returns a Result with a tuple of the receiver and `other` values if both
+	/// are `Success`es, or re-wrapping the error of the earlier `Failure`.
+	func fanout<U>(_ other: @autoclosure () -> Result<U, Error>) -> Result<(Success, U), Error> {
+		return self.flatMap { left in other().map { right in (left, right) } }
 	}
 }
