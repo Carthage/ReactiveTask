@@ -8,6 +8,7 @@
 
 import Foundation
 import ReactiveSwift
+import enum Result.NoError
 
 @available(*, unavailable, renamed: "Task.launch(self:)")
 public func launchTask(_ task: Task) -> SignalProducer<TaskEvent<Data>, TaskError> {
@@ -15,7 +16,7 @@ public func launchTask(_ task: Task) -> SignalProducer<TaskEvent<Data>, TaskErro
 }
 
 @available(*, unavailable, renamed: "Task.launch(self:standardInput:)")
-public func launchTask(_ task: Task, standardInput: SignalProducer<Data, Never>?) -> SignalProducer<TaskEvent<Data>, TaskError> {
+public func launchTask(_ task: Task, standardInput: SignalProducer<Data, NoError>?) -> SignalProducer<TaskEvent<Data>, TaskError> {
 	fatalError()
 }
 

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		CD52F6441DD0411100B2F764 /* Availability.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD52F6431DD0411100B2F764 /* Availability.swift */; };
 		CD72E5711E7A4A4800E2DE29 /* StringExtensionSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD72E5701E7A4A4800E2DE29 /* StringExtensionSpec.swift */; };
+		D02130921AF87B6500B9EC20 /* Result.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D02130911AF87B6500B9EC20 /* Result.framework */; };
 		D0BFEA5E1A2D1E5E00E23194 /* ReactiveTask.h in Headers */ = {isa = PBXBuildFile; fileRef = D0BFEA5D1A2D1E5E00E23194 /* ReactiveTask.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D0BFEA641A2D1E5E00E23194 /* ReactiveTask.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA581A2D1E5E00E23194 /* ReactiveTask.framework */; };
 		D0BFEA941A2D1F3900E23194 /* Quick.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0BFEA931A2D1F3900E23194 /* Quick.framework */; };
@@ -32,6 +33,7 @@
 /* Begin PBXFileReference section */
 		CD52F6431DD0411100B2F764 /* Availability.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Availability.swift; sourceTree = "<group>"; };
 		CD72E5701E7A4A4800E2DE29 /* StringExtensionSpec.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StringExtensionSpec.swift; sourceTree = "<group>"; };
+		D02130911AF87B6500B9EC20 /* Result.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Result.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA581A2D1E5E00E23194 /* ReactiveTask.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ReactiveTask.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0BFEA5C1A2D1E5E00E23194 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D0BFEA5D1A2D1E5E00E23194 /* ReactiveTask.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ReactiveTask.h; sourceTree = "<group>"; };
@@ -68,6 +70,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D02130921AF87B6500B9EC20 /* Result.framework in Frameworks */,
 				F1DE85C61D88D63900BF8046 /* ReactiveSwift.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -121,6 +124,7 @@
 		D0BFEA5B1A2D1E5E00E23194 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				D02130911AF87B6500B9EC20 /* Result.framework */,
 				F1DE85C51D88D63900BF8046 /* ReactiveSwift.framework */,
 				D0BFEA5C1A2D1E5E00E23194 /* Info.plist */,
 			);
@@ -276,11 +280,11 @@
 				TargetAttributes = {
 					D0BFEA571A2D1E5E00E23194 = {
 						CreatedOnToolsVersion = 6.1.1;
-						LastSwiftMigration = 1020;
+						LastSwiftMigration = 1010;
 					};
 					D0BFEA621A2D1E5E00E23194 = {
 						CreatedOnToolsVersion = 6.1.1;
-						LastSwiftMigration = 1020;
+						LastSwiftMigration = 1010;
 					};
 				};
 			};
@@ -289,7 +293,6 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				English,
 				en,
 			);
 			mainGroup = D0BFEA4E1A2D1E5E00E23194;
@@ -368,7 +371,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 4.2;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
 			};
@@ -390,7 +393,7 @@
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 4.2;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
 			};
@@ -467,7 +470,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				SDKROOT = macosx;
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 4.2;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
 			};
@@ -516,7 +519,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				SDKROOT = macosx;
 				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 4.2;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
 			};

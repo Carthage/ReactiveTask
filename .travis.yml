@@ -6,13 +6,13 @@ branches:
 matrix:
   include:
     - os: osx
-      osx_image: xcode10.2
+      osx_image: xcode10.1
       xcode_scheme: ReactiveTask
       script:
         - set -o pipefail && xcodebuild -workspace "$TRAVIS_XCODE_WORKSPACE" -scheme "$TRAVIS_XCODE_SCHEME" test | xcpretty
-      env: JOB=Xcode10.2
+      env: JOB=Xcode10.1
     - os: osx
-      osx_image: xcode10.2
+      osx_image: xcode10.1
       script:
         - swift --version
         - swift build
@@ -21,7 +21,7 @@ matrix:
         submodules: false
       env: JOB=SWIFTPM_DARWIN
     - os: osx
-      osx_image: xcode10.2
+      osx_image: xcode10.1
       script:
         - gem update cocoapods
         - pod repo update
@@ -45,4 +45,4 @@ deploy:
   on:
     repo: Carthage/ReactiveTask
     tags: true
-    condition: $JOB = Xcode10.2
+    condition: $JOB = Xcode10.1

@@ -8,6 +8,7 @@
 
 import Foundation
 import ReactiveSwift
+import Result
 
 /// Describes how to execute a shell command.
 public struct Task {
@@ -196,7 +197,7 @@ private final class Pipe {
 	/// anywhere else, as it may close unexpectedly.
 	///
 	/// Returns a producer that will complete or error.
-	func writeDataFromProducer(_ producer: SignalProducer<Data, Never>) -> SignalProducer<(), TaskError> {
+	func writeDataFromProducer(_ producer: SignalProducer<Data, NoError>) -> SignalProducer<(), TaskError> {
 		return SignalProducer { observer, lifetime in
 			self.group.enter()
 			let channel = DispatchIO(type: .stream, fileDescriptor: self.writeFD, queue: self.queue) { error in
@@ -216,7 +217,8 @@ private final class Pipe {
 				lifetime += producerDisposable
 
 				signal.observe(Signal.Observer(value: { data in
-					let dispatchData = data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> DispatchData in
+					let dispatchData = data.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) -> DispatchData in
+						let buffer = UnsafeRawBufferPointer(start: bytes, count: data.count)
 						return DispatchData(bytes: buffer)
 					}
 
@@ -392,7 +394,7 @@ extension Task {
 	/// - Returns: A producer that will launch the receiver when started, then send
 	///            `TaskEvent`s as execution proceeds.
 	public func launch( // swiftlint:disable:this function_body_length cyclomatic_complexity
-		standardInput: SignalProducer<Data, Never>? = nil,
+		standardInput: SignalProducer<Data, NoError>? = nil,
 		shouldBeTerminatedOnParentExit: Bool = false
 	) -> SignalProducer<TaskEvent<Data>, TaskError> {
 		return SignalProducer { observer, lifetime in
@@ -548,13 +550,5 @@ extension Task {
 					signal.observe(observer)
 				}
 		}
-	}
-}
-
-extension Result {
-	/// Returns a Result with a tuple of the receiver and `other` values if both
-	/// are `Success`es, or re-wrapping the error of the earlier `Failure`.
-	func fanout<U>(_ other: @autoclosure () -> Result<U, Error>) -> Result<(Success, U), Error> {
-		return self.flatMap { left in other().map { right in (left, right) } }
 	}
 }
