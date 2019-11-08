@@ -12,6 +12,8 @@ import Result
 
 /// Describes how to execute a shell command.
 public struct Task {
+    private static var globalIdentifier = Atomic(0)
+    
 	/// The path to the executable that should be launched.
 	public var launchPath: String
 
@@ -29,6 +31,11 @@ public struct Task {
 	///
 	/// If nil, the launched task will inherit the environment of its parent.
 	public var environment: [String: String]?
+    
+    public let identifier = Task.globalIdentifier.modify({ value -> Int in
+        value += 1
+        return value
+    })
 
 	public init(_ launchPath: String, arguments: [String] = [], workingDirectoryPath: String? = nil, environment: [String: String]? = nil) {
 		self.launchPath = launchPath
@@ -264,18 +271,18 @@ public enum TaskEvent<T>: TaskEventType {
 	case launch(Task)
 
 	/// Some data arrived from the task on `stdout`.
-	case standardOutput(Data)
+	case standardOutput(Task, Data)
 
 	/// Some data arrived from the task on `stderr`.
-	case standardError(Data)
+	case standardError(Task, Data)
 
 	/// The task exited successfully (with status 0), and value T was produced
 	/// as a result.
-	case success(T)
+	case success(Task, T)
 
 	/// The resulting value, if the event is `Success`.
 	public var value: T? {
-		if case let .success(value) = self {
+		if case let .success(_, value) = self {
 			return value
 		}
 		return nil
@@ -287,14 +294,14 @@ public enum TaskEvent<T>: TaskEventType {
 		case let .launch(task):
 			return .launch(task)
 
-		case let .standardOutput(data):
-			return .standardOutput(data)
+		case let .standardOutput(task, data):
+			return .standardOutput(task, data)
 
-		case let .standardError(data):
-			return .standardError(data)
+		case let .standardError(task, data):
+			return .standardError(task, data)
 
-		case let .success(value):
-			return .success(transform(value))
+		case let .success(task, value):
+			return .success(task, transform(value))
 		}
 	}
 
@@ -304,14 +311,14 @@ public enum TaskEvent<T>: TaskEventType {
 		case let .launch(task):
 			return .init(value: .launch(task))
 
-		case let .standardOutput(data):
-			return .init(value: .standardOutput(data))
+		case let .standardOutput(task, data):
+			return .init(value: .standardOutput(task, data))
 
-		case let .standardError(data):
-			return .init(value: .standardError(data))
+		case let .standardError(task, data):
+			return .init(value: .standardError(task, data))
 
-		case let .success(value):
-			return transform(value).map(TaskEvent<U>.success)
+		case let .success(task, value):
+            return transform(value).map { TaskEvent<U>.success(task, $0) }
 		}
 	}
 }
@@ -345,16 +352,16 @@ extension TaskEvent: CustomStringConvertible {
 
 		switch self {
 		case let .launch(task):
-			return "launch: \(task)"
+            return "Task #\(task.identifier) launch: \(task)"
 
-		case let .standardOutput(data):
-			return "stdout: " + dataDescription(data)
+		case let .standardOutput(task, data):
+			return "Task #\(task.identifier) stdout: " + dataDescription(data)
 
-		case let .standardError(data):
-			return "stderr: " + dataDescription(data)
+		case let .standardError(task, data):
+			return "Task #\(task.identifier) stderr: " + dataDescription(data)
 
-		case let .success(value):
-			return "success(\(value))"
+		case let .success(task, value):
+			return "Task #\(task.identifier) success(\(value))"
 		}
 	}
 }
@@ -383,6 +390,12 @@ extension Signal where Value: TaskEventType {
 }
 
 extension Task {
+    
+    private static let globalPipe = Signal<TaskEvent<Data>, TaskError>.pipe()
+    public static var globalSignal: Signal<TaskEvent<Data>, TaskError> {
+        return globalPipe.output
+    }
+    
 	/// Launches a new shell task.
 	///
 	/// - Parameters:
@@ -489,8 +502,12 @@ extension Task {
 								.flatMap(.concat) { $0.producer }
 						}
 
-						let stdoutAggregated = startAggregating(producer: stdoutProducer, chunk: TaskEvent.standardOutput)
-						let stderrAggregated = startAggregating(producer: stderrProducer, chunk: TaskEvent.standardError)
+                        let stdoutAggregated = startAggregating(producer: stdoutProducer) {
+                            TaskEvent.standardOutput(self, $0)
+                        }
+                        let stderrAggregated = startAggregating(producer: stderrProducer) {
+                            TaskEvent.standardError(self, $0)
+                        }
 
 						process.standardOutput = stdoutPipe.writeHandle
 						process.standardError = stderrPipe.writeHandle
@@ -503,7 +520,7 @@ extension Task {
 								// through stdout.
 								lifetime += stderrAggregated
 									.then(stdoutAggregated)
-									.map(TaskEvent.success)
+                                    .map { TaskEvent.success(self, $0) }
 									.start(observer)
 							} else {
 								// Wait for stdout to finish, then pass
@@ -550,5 +567,8 @@ extension Task {
 					signal.observe(observer)
 				}
 		}
-	}
+        .on(event: { event in
+            Task.globalPipe.input.send(event)
+        })
+    }
 }
